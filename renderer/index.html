@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;" />
+  <title>ghost</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Dedicated drag handle / top bar -->
+    <div id="toolbar" class="drag-handle">
+      <div class="drag-pill" title="Drag to move window">
+        <span class="drag-dots" aria-hidden="true"></span>
+        <span class="drag-label">Drag</span>
+      </div>
+      <button class="tb-logo" id="logo-btn" title="Ghost"></button>
+      <div class="tb-divider"></div>
+      <button class="tb-hide" id="hide-btn"><span class="chev"></span><span>Hide</span></button>
+      <div class="tb-divider"></div>
+      <button class="tb-stop" id="stop-btn" title="Start / stop listening"></button>
+      <div class="tb-divider"></div>
+      <button class="tb-end" id="end-session-btn" title="End session and return to dashboard">End Session</button>
+      <div class="tb-divider"></div>
+      <button class="tb-quit" id="quit-btn" title="Quit Ghost (⌘⇧X)"></button>
+    </div>
+
+    <!-- Main assistant panel -->
+    <div id="panel-wrap">
+      <span id="live-dot" class="off"></span>
+      <div id="stt-status" class="stt-status stt-disconnected" title="STT connection status">off</div>
+      <div id="panel" class="glass no-drag">
+
+        <!-- Two-column layout: responses (left) + live transcript sidebar (right) -->
+        <div id="panel-columns">
+
+          <!-- Left column: AI responses -->
+          <div id="panel-main">
+            <div id="messages"></div>
+
+            <div id="composer">
+              <div id="input-area">
+                <div id="placeholder">Ask about your screen or conversation, or <span class="keycap">⌘</span><span class="keycap">⏎</span> for Assist</div>
+                <textarea id="input" rows="1" spellcheck="false"></textarea>
+              </div>
+              <div id="composer-bottom">
+                <button id="smart-toggle" class="smart-pill" title="Toggle Smart auto-suggestions"><span class="ic"></span><span>Smart</span></button>
+                <div class="composer-actions">
+                  <button class="act act-primary" data-mode="say" title="Suggest what to say next (Ctrl+Shift+Enter / ⌘⇧Enter)">
+                    <span class="ic"></span><span>Say</span>
+                  </button>
+                  <button class="act act-secondary" data-mode="assist" title="Scan screen & conversation (Ctrl+Enter / ⌘Enter)">
+                    <span class="ic"></span><span>Assist</span>
+                  </button>
+                  <button class="act" data-mode="followup" title="Follow-up questions"><span class="ic"></span><span>Follow-up</span></button>
+                  <button class="act" data-mode="recap" title="Meeting recap"><span class="ic"></span><span>Recap</span></button>
+                  <button class="act" data-mode="mock" title="Practice interview"><span class="ic"></span><span>Mock</span></button>
+                  <button class="act" data-mode="phoneCall" title="Phone Call guidance"><span class="ic"></span><span>Call</span></button>
+                  <button class="act" data-mode="coffee" title="Casual Coffee chat"><span class="ic"></span><span>Coffee</span></button>
+                  <button class="act act-copy" id="copy-btn" title="Copy latest answer to clipboard"><span class="ic"></span><span>Copy</span></button>
+                </div>
+                <div class="spacer"></div>
+                <button id="history-btn" class="history-btn" title="View conversation history"><span class="ic"></span></button>
+                <button id="more-btn" class="more-btn" title="Settings"></button>
+                <button id="send-btn" title="Send"></button>
+              </div>
+            </div>
+
+            <div id="prep-status" class="prep-status">
+              <span class="prep-item" data-field="resume">📄 Resume</span>
+              <span class="prep-item" data-field="jd">💼 JD</span>
+              <span class="prep-item" data-field="stories">🎯 Stories</span>
+              <span class="prep-item" data-field="salary">💰 Salary</span>
+            </div>
+          </div>
+
+        </div><!-- /panel-columns -->
+      </div>
+    </div>
+
+    <!-- Transcript history sidebar — floats OUTSIDE main panel, toggled by history button -->
+    <div id="transcript-sidebar" class="transcript-sidebar hidden">
+      <div class="ts-header">
+        <span class="ts-title">Conversation History</span>
+        <button class="ts-close-btn" id="close-sidebar-btn" title="Close history">✕</button>
+      </div>
+      <div id="ts-list" class="ts-list">
+        <div class="ts-placeholder">Conversation history will appear here when listening.</div>
+      </div>
+      <div class="ts-footer">
+        <button class="ts-clear-btn" id="clear-transcript-btn" title="Clear all history">Clear History</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resize grip (bottom-right). The frameless toolbar window has no native
+       edge handles; dragging this asks the main process to resize the window. -->
+  <div id="resize-grip" title="Drag to resize"></div>
+
+  <!-- Settings -->
+  <div id="settings-scrim" class="hidden">
+    <div id="settings" class="glass">
+      <div class="s-head">
+        <div class="s-title">Settings</div>
+        <button id="s-close" class="s-close">Done</button>
+      </div>
+
+      <!-- Tab bar -->
+      <div class="s-tabs">
+        <button class="s-tab on" data-tab="keys">🔑 Keys</button>
+        <button class="s-tab" data-tab="transcription">Audio</button>
+        <button class="s-tab" data-tab="profile">📄 Profile</button>
+        <button class="s-tab" data-tab="prep">🎯 Interview Prep</button>
+        <button class="s-tab" data-tab="style">✨ Style</button>
+        <button class="s-tab" data-tab="qa">💬 Q&amp;A</button>
+        <button class="s-tab" data-tab="android">📱 Android</button>
+      </div>
+
+      <!-- Tab: Keys -->
+      <div class="s-body s-tab-pane" data-pane="keys">
+        <label class="s-label">Provider</label>
+        <div class="s-seg" id="provider-seg">
+          <button data-provider="openai">OpenAI</button>
+          <button data-provider="anthropic">Anthropic</button>
+          <button data-provider="gemini">Gemini</button>
+          <button data-provider="custom">Custom</button>
+          <button data-provider="ollama">Ollama</button>
+          <button data-provider="groq">Groq</button>
+          <button data-provider="minimax">MiniMax</button>
+          <button data-provider="azure">Azure AI</button>
+        </div>
+
+        <label class="s-label">API keys &amp; URLs <span class="s-hint">stored locally · never sent to any server</span></label>
+        <div class="s-field"><span>OpenAI</span><input id="key-openai" type="password" placeholder="sk-..." autocomplete="off" /></div>
+        <div class="s-field"><span>Anthropic</span><input id="key-anthropic" type="password" placeholder="sk-ant-..." autocomplete="off" /></div>
+        <div class="s-field"><span>Gemini</span><input id="key-gemini" type="password" placeholder="AIza..." autocomplete="off" /></div>
+        <div class="s-field"><span>Deepgram</span><input id="key-deepgram" type="password" placeholder="dg-..." autocomplete="off" /></div>
+        <div class="s-field"><span>Custom</span><input id="key-custom" type="password" placeholder="optional" autocomplete="off" /></div>
+        <div class="s-field"><span>MiniMax</span><input id="key-minimax" type="password" placeholder="MiniMax API key" autocomplete="off" /></div>
+
+        <label class="s-label">MiniMax region <span class="s-hint">keys are region-bound — a Global key will 401 against China, and vice versa</span></label>
+        <div class="s-seg" id="minimax-region-seg">
+          <button data-region="global_en">Global</button>
+          <button data-region="cn_zh">China</button>
+        </div>
+
+        <div id="custom-endpoint-settings" class="hidden">
+          <label class="s-label" for="base-url">Custom endpoint <span class="s-hint">OpenAI-compatible chat API</span></label>
+          <div class="s-field"><span>Base URL</span><input id="base-url" type="url" placeholder="http://127.0.0.1:18789/v1" autocomplete="off" spellcheck="false" /></div>
+          <div class="s-help">Your Custom key and LLM requests are sent to this URL. Speech-to-text continues to use Deepgram, OpenAI, or Gemini.</div>
+        </div>
+        <div class="s-field"><span>Ollama URL</span><input id="key-ollama" type="text" placeholder="http://localhost:11434" autocomplete="off" /></div>
+        <div class="s-field"><span>Groq</span><input id="key-groq" type="password" placeholder="gsk_..." autocomplete="off" /></div>
+        <div class="s-field"><span>Azure AI Foundry</span><input id="key-azure" type="password" placeholder="azure key or Entra token" autocomplete="off" /></div>
+
+        <label class="s-label">Azure endpoint <span class="s-hint">Azure OpenAI: https://&lt;resource&gt;.openai.azure.com/openai · AI Foundry: https://&lt;host&gt;.cognitiveservices.azure.com (Ghost adds /openai/v1)</span></label>
+        <div class="s-field"><span>Endpoint</span><input id="azure-endpoint" type="text" placeholder="https://host.cognitiveservices.azure.com" autocomplete="off" /></div>
+
+        <label class="s-label">Models <span class="s-hint">fast = Smart off · smart = Smart on</span></label>
+        <div class="s-field"><span>Fast</span><input id="model-fast" type="text" autocomplete="off" /></div>
+        <div class="s-field"><span>Smart</span><input id="model-smart" type="text" autocomplete="off" /></div>
+
+        <label class="s-label">Assistant access <span class="s-hint">programs allowed to see what Ghost is doing</span></label>
+        <div class="s-callers" id="applink-callers"></div>
+
+        <div class="s-status" id="s-status"></div>
+      </div>
+
+      <!-- Tab: Transcription -->
+      <div class="s-body s-tab-pane hidden" data-pane="transcription">
+        <label class="s-label">Speech-to-text provider</label>
+        <div class="s-seg s-seg-wrap" id="stt-provider-seg">
+          <button data-stt-provider="auto">Auto</button>
+          <button data-stt-provider="local">Local</button>
+          <button data-stt-provider="deepgram">Deepgram</button>
+          <button data-stt-provider="openai">OpenAI</button>
+          <button data-stt-provider="gemini">Gemini</button>
+          <button data-stt-provider="gemini-transcribe">Gemini Transcribe</button>
+        </div>
+        <div class="s-note">Local mode keeps microphone and meeting audio on this computer. It never silently falls back to a cloud transcription provider.</div>
+
+        <div class="whisper-card">
+          <div class="whisper-runtime-row">
+            <span class="s-label">whisper.cpp runtime</span>
+            <span id="whisper-runtime-status" class="whisper-badge">Checking…</span>
+          </div>
+
+          <label class="s-label" for="whisper-model">Local model</label>
+          <select id="whisper-model" class="s-select"></select>
+          <div id="whisper-model-detail" class="s-note"></div>
+
+          <div id="whisper-progress-wrap" class="whisper-progress-wrap hidden">
+            <progress id="whisper-progress" max="100" value="0"></progress>
+            <span id="whisper-progress-label">0%</span>
+          </div>
+
+          <div class="whisper-actions">
+            <button id="whisper-download" class="s-action">Download</button>
+            <button id="whisper-cancel" class="s-action hidden">Cancel</button>
+            <button id="whisper-import" class="s-action">Import…</button>
+            <button id="whisper-delete" class="s-action danger" disabled>Delete</button>
+          </div>
+
+          <div class="s-field">
+            <span>Language</span>
+            <select id="whisper-language" class="s-select compact">
+              <option value="auto">Auto-detect</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+          <div class="s-field">
+            <span>CPU threads</span>
+            <input id="whisper-threads" type="number" min="0" max="64" step="1" value="0" />
+          </div>
+          <div class="s-note">Use 0 for whisper.cpp's default. English-only models always use English regardless of the language setting.</div>
+        </div>
+
+        <div class="s-status" id="whisper-status"></div>
+      </div>
+
+      <!-- Tab: Profile -->
+      <div class="s-body s-tab-pane hidden" data-pane="profile">
+        <label class="s-label">Your resume <span class="s-hint">paste full resume, or import a PDF/DOCX</span></label>
+        <div class="s-field s-upload"><span class="s-filename" id="resume-filename"></span><button class="s-upload-btn" id="upload-resume-btn">Import PDF/DOCX</button></div>
+        <textarea id="resume-text" rows="7" spellcheck="false" placeholder="Paste your full resume here. Ghost will extract Name, Summary, Experience, Skills, Projects, and Education automatically."></textarea>
+
+        <label class="s-label">Target job description <span class="s-hint">optional — every answer gets tailored to this role</span></label>
+        <div class="s-field s-upload"><span class="s-filename" id="jd-filename"></span><button class="s-upload-btn" id="upload-jd-btn">Import PDF/DOCX</button></div>
+        <textarea id="job-description" rows="5" spellcheck="false" placeholder="Paste the job description for the role you're interviewing for. Ghost will highlight your most relevant experience."></textarea>
+      </div>
+
+      <!-- Tab: Interview Prep -->
+      <div class="s-body s-tab-pane hidden" data-pane="prep">
+        <label class="s-label">Your STAR stories <span class="s-hint">write 3–5 real behavioral stories — used for "tell me about a time…" questions</span></label>
+        <textarea id="star-stories" rows="8" spellcheck="false" placeholder="Story 1: At [Company], we faced [situation]. I was responsible for [task]. I did [specific actions]. The result was [outcome with metrics if possible].&#10;&#10;Story 2: ..."></textarea>
+
+        <label class="s-label">Why this company <span class="s-hint">used for motivation questions</span></label>
+        <textarea id="why-company" rows="3" spellcheck="false" placeholder="e.g. I admire how [company] has [specific thing]. Their work on [X] aligns with my experience in [Y]..."></textarea>
+
+        <label class="s-label">Why leaving current role <span class="s-hint">keep it positive</span></label>
+        <textarea id="why-leaving" rows="2" spellcheck="false" placeholder="e.g. I've grown a lot at [company] and I'm looking for [next challenge]..."></textarea>
+
+        <label class="s-label">Work style &amp; values <span class="s-hint">used for culture fit and situational questions</span></label>
+        <textarea id="work-style" rows="3" spellcheck="false" placeholder="e.g. I prefer data-driven decisions, work well with autonomy, value direct feedback, thrive in fast-paced environments..."></textarea>
+      </div>
+
+      <!-- Tab: Q&A -->
+      <div class="s-body s-tab-pane hidden" data-pane="qa">
+        <label class="s-label">Salary target <span class="s-hint">used when asked about compensation</span></label>
+        <input id="salary-target" type="text" placeholder="e.g. $150k–$180k base + equity, open to discuss total comp" autocomplete="off" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.14);background:rgba(0,0,0,0.25);color:#fff;font-size:13px;font-family:inherit;outline:none;" />
+
+        <label class="s-label" style="margin-top:14px;">Questions to ask the interviewer <span class="s-hint">Ghost will suggest these at the end</span></label>
+        <textarea id="questions-to-ask" rows="6" spellcheck="false" placeholder="e.g.&#10;- What does success look like in the first 90 days?&#10;- How does the team handle technical debt?&#10;- What's the biggest challenge the team is facing right now?&#10;- How does feedback and mentorship work here?"></textarea>
+      </div>
+
+      <!-- Tab: Style -->
+      <div class="s-body s-tab-pane hidden" data-pane="style">
+        <label class="s-label">AI rules <span class="s-hint">how the AI should write its responses</span></label>
+        <textarea id="ai-rules" rows="10" spellcheck="false" maxlength="2000" placeholder="e.g.
+- Never use em-dashes.
+- Reply in 2-3 short bullet points.
+- Use a casual, first-person tone.
+- Avoid jargon; explain technical terms.
+- Don&#39;t start with &quot;I&quot;.
+"></textarea>
+        <div class="s-counter"><span id="ai-rules-count">0</span> / 2000</div>
+        <div class="s-hint-block">
+          These rules tell Ghost <strong>how</strong> to write, not <strong>what</strong> to say. Use one imperative sentence per line (e.g. <em>Never use em-dashes.</em>). They apply to every mode except coding-problem solves (LeetCode), which stays strict. Stored locally; never sent anywhere except the AI provider when Ghost answers a question.
+        </div>
+      </div>
+ 
+       <!-- Tab: Android & Phone Calls -->
+       <div class="s-body s-tab-pane hidden" data-pane="android">
+         <div class="whisper-card">
+           <div class="whisper-runtime-row">
+             <span class="s-label">Android CLI &amp; ADB Bridge</span>
+             <span id="android-cli-status" class="whisper-badge">Scanning…</span>
+           </div>
+           <div id="android-cli-info" class="s-note">Checking Android development bridge (ADB / Android CLI)...</div>
+           <div class="whisper-actions" style="margin-top:4px;">
+             <button id="android-refresh-btn" class="s-action">Scan Devices</button>
+             <button id="android-screencap-btn" class="s-action">Test Screen Capture</button>
+           </div>
+         </div>
+
+         <label class="s-label">Connected Android Devices <span class="s-hint">USB debugging or Wireless ADB</span></label>
+         <div id="android-device-list" class="android-device-list">
+           <div class="s-note">No Android devices connected. Plug in your phone via USB with USB Debugging enabled, or pair via Wi-Fi ADB.</div>
+         </div>
+
+         <label class="s-label" style="margin-top:10px;">Phone Call Audio Setup <span class="s-hint">route live calls to Ghost</span></label>
+         <div class="android-guide-card">
+           <div class="guide-step">
+             <div class="step-num">1</div>
+             <div class="step-content">
+               <strong>Windows Phone Link (Recommended)</strong>
+               <p>Link your Android phone to Windows via the Phone Link app. Answer phone calls directly on your PC — Ghost captures the caller via the system loopback track seamlessly.</p>
+               <button id="open-phonelink-btn" class="s-action compact-btn">Open Phone Link</button>
+             </div>
+           </div>
+           <div class="guide-step">
+             <div class="step-num">2</div>
+             <div class="step-content">
+               <strong>Bluetooth Hands-free / Headset</strong>
+               <p>Pair your phone to your PC's Bluetooth as an audio receiver or use a dual-connection Bluetooth headset connected to both phone and computer.</p>
+             </div>
+           </div>
+           <div class="guide-step">
+             <div class="step-num">3</div>
+             <div class="step-content">
+               <strong>USB Audio Forwarding (scrcpy / sndcpy)</strong>
+               <p>For Android 10+, forward device audio directly over USB via ADB for zero-latency phone interview monitoring.</p>
+             </div>
+           </div>
+         </div>
+       </div>
+
+    </div>
+  </div>
+
+  <!-- First-run tutorial / walkthrough -->
+  <div id="onboard-scrim" class="hidden">
+    <div id="onboard" class="glass">
+      <div class="ob-dots" id="ob-dots"></div>
+      <div class="ob-icon" id="ob-icon"></div>
+      <div class="ob-title" id="ob-title"></div>
+      <div class="ob-body" id="ob-body"></div>
+      <div class="ob-buttons" id="ob-buttons"></div>
+      <div class="ob-actions">
+        <button id="ob-skip" class="ob-ghost">Skip</button>
+        <div class="spacer"></div>
+        <button id="ob-back" class="ob-ghost">Back</button>
+        <button id="ob-next" class="ob-primary">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Assistant access request. Shown in-window rather than as a native dialog:
+       Ghost hides its dock icon, so an OS panel never comes forward and cannot be
+       clicked. -->
+  <div id="consent-scrim" class="hidden">
+    <div id="consent" class="glass">
+      <div class="cs-title" id="cs-title"></div>
+      <div class="cs-body" id="cs-body"></div>
+      <div class="cs-actions">
+        <button id="cs-deny" class="ob-ghost">Don’t allow</button>
+        <button id="cs-allow" class="ob-primary">Allow</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="icons.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>

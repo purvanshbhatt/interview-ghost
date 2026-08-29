@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Entitlements required for an Electron app under the hardened runtime
+       (which notarization requires). These allow Chromium's JIT and the
+       dynamic libraries Electron loads. -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+  <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+  <true/>
+
+  <!-- cue transcribes the microphone. The hardened runtime withholds audio
+       input unless this is declared, so without it the mic is refused even
+       after the user grants permission. -->
+  <key>com.apple.security.device.audio-input</key>
+  <true/>
+
+  <!-- Not sandboxed: the always-on-top overlay and screen capture need it off.
+       Screen Recording is a TCC prompt, not an entitlement. -->
+</dict>
+</plist>

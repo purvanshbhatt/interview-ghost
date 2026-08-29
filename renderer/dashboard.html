@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;" />
+  <title>Ghost Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <div id="dashboard-root">
+    <header class="dash-header">
+      <div class="dash-title-group">
+        <h1>Ghost</h1>
+        <p class="dash-sub">Pick a mode to launch the floating overlay. Drop up to 5 context files under each mode to ground its answers.</p>
+      </div>
+      <div class="dash-actions">
+        <button id="past-sessions-btn" class="dash-link">Past Sessions</button>
+        <button id="settings-btn" class="dash-link">Settings</button>
+      </div>
+      <div class="win-controls">
+        <button id="win-minimize" class="win-btn" title="Minimize">─</button>
+        <button id="win-close" class="win-btn win-close" title="Close Ghost">✕</button>
+      </div>
+    </header>
+
+    <main class="dash-main">
+      <section id="mode-cards" class="mode-cards" aria-label="Modes">
+        <p class="dash-loading">Loading modes...</p>
+      </section>
+    </main>
+
+    <!-- Past Sessions drawer (hidden by default) -->
+    <aside id="past-sessions-drawer" class="drawer hidden" aria-label="Past sessions">
+      <div class="drawer-head">
+        <h2>Past Sessions</h2>
+        <button id="close-past-sessions" class="drawer-close">Close</button>
+      </div>
+      <ul id="past-sessions-list" class="past-sessions-list">
+        <li class="past-empty">No sessions yet. End a session to create your first one.</li>
+      </ul>
+      <article id="past-session-view" class="past-session-view hidden">
+        <pre id="past-session-body"></pre>
+      </article>
+    </aside>
+
+    <!-- Settings drawer (hidden by default) -->
+    <aside id="settings-drawer" class="drawer settings-drawer hidden" aria-label="Settings">
+      <div class="drawer-head">
+        <h2>Settings</h2>
+        <button id="close-settings" class="drawer-close">Done</button>
+      </div>
+
+      <div class="settings-body">
+        <label class="settings-row settings-row-check">
+          <input type="checkbox" id="save-transcripts-toggle" />
+          <span>Save transcripts to disk after each session (<code>meeting_*.txt</code> in <code>&lt;userData&gt;/transcripts</code>)</span>
+        </label>
+        <p class="settings-hint">Unchecked, sessions still leave a structured meeting record in <code>meetings.json</code> for memory injection, but no transcript .txt is written. Audio is never recorded to disk in either mode.</p>
+
+        <div class="s-tabs" id="settings-tabs">
+          <button class="s-tab on" data-tab="keys">🔑 Keys</button>
+          <button class="s-tab" data-tab="audio">🎙 Audio</button>
+          <button class="s-tab" data-tab="profile">📄 Profile</button>
+          <button class="s-tab" data-tab="prep">🎯 Prep</button>
+          <button class="s-tab" data-tab="style">✨ Style</button>
+          <button class="s-tab" data-tab="qa">💬 Q&amp;A</button>
+        </div>
+        <div class="s-saved" id="settings-saved">Saved</div>
+
+        <!-- Keys -->
+        <div class="s-tab-pane" data-pane="keys">
+          <label class="s-label">Provider</label>
+          <div class="s-seg s-seg-wrap" id="provider-seg">
+            <button data-provider="openai">OpenAI</button>
+            <button data-provider="anthropic">Anthropic</button>
+            <button data-provider="gemini">Gemini</button>
+            <button data-provider="custom">Custom</button>
+            <button data-provider="ollama">Ollama</button>
+            <button data-provider="groq">Groq</button>
+            <button data-provider="minimax">MiniMax</button>
+            <button data-provider="azure">Azure AI</button>
+          </div>
+
+          <label class="s-label">API keys &amp; URLs <span class="s-hint">stored locally · never sent to any server</span></label>
+          <div class="s-field"><span>OpenAI</span><input id="key-openai" type="password" placeholder="sk-..." autocomplete="off" /></div>
+          <div class="s-field"><span>Anthropic</span><input id="key-anthropic" type="password" placeholder="sk-ant-..." autocomplete="off" /></div>
+          <div class="s-field"><span>Gemini</span><input id="key-gemini" type="password" placeholder="AIza..." autocomplete="off" /></div>
+          <div class="s-field"><span>Deepgram</span><input id="key-deepgram" type="password" placeholder="dg-..." autocomplete="off" /></div>
+          <div class="s-field"><span>Custom</span><input id="key-custom" type="password" placeholder="optional" autocomplete="off" /></div>
+          <div class="s-field"><span>MiniMax</span><input id="key-minimax" type="password" placeholder="MiniMax API key" autocomplete="off" /></div>
+
+          <label class="s-label">MiniMax region <span class="s-hint">keys are region-bound</span></label>
+          <div class="s-seg" id="minimax-region-seg">
+            <button data-region="global_en">Global</button>
+            <button data-region="cn_zh">China</button>
+          </div>
+
+          <div id="custom-endpoint-settings" class="hidden">
+            <label class="s-label" for="base-url">Custom endpoint <span class="s-hint">OpenAI-compatible chat API</span></label>
+            <div class="s-field"><span>Base URL</span><input id="base-url" type="url" placeholder="http://127.0.0.1:18789/v1" autocomplete="off" spellcheck="false" /></div>
+          </div>
+          <div class="s-field"><span>Ollama URL</span><input id="key-ollama" type="text" placeholder="http://localhost:11434" autocomplete="off" /></div>
+          <div class="s-field"><span>Groq</span><input id="key-groq" type="password" placeholder="gsk_..." autocomplete="off" /></div>
+          <div class="s-field"><span>Azure AI Foundry</span><input id="key-azure" type="password" placeholder="azure key or Entra token" autocomplete="off" /></div>
+
+          <label class="s-label">Azure endpoint <span class="s-hint">Azure OpenAI or AI Foundry endpoint</span></label>
+          <div class="s-field"><span>Endpoint</span><input id="azure-endpoint" type="text" placeholder="https://host.cognitiveservices.azure.com" autocomplete="off" /></div>
+
+          <label class="s-label">Models <span class="s-hint">fast = Smart off · smart = Smart on</span></label>
+          <div class="s-field"><span>Fast</span><input id="model-fast" type="text" autocomplete="off" /></div>
+          <div class="s-field"><span>Smart</span><input id="model-smart" type="text" autocomplete="off" /></div>
+        </div>
+
+        <!-- Audio -->
+        <div class="s-tab-pane hidden" data-pane="audio">
+          <label class="s-label">Speech-to-text provider</label>
+          <div class="s-seg s-seg-wrap" id="stt-provider-seg">
+            <button data-stt-provider="auto">Auto</button>
+            <button data-stt-provider="local">Local</button>
+            <button data-stt-provider="deepgram">Deepgram</button>
+            <button data-stt-provider="openai">OpenAI</button>
+            <button data-stt-provider="gemini">Gemini</button>
+            <button data-stt-provider="gemini-transcribe">Gemini Transcribe</button>
+          </div>
+          <div class="s-note">Local mode keeps microphone and meeting audio on this computer. It never silently falls back to a cloud transcription provider.</div>
+
+          <div class="whisper-card">
+            <div class="whisper-runtime-row">
+              <span class="s-label">whisper.cpp runtime</span>
+              <span id="whisper-runtime-status" class="whisper-badge">Checking…</span>
+            </div>
+
+            <label class="s-label" for="whisper-model">Local model</label>
+            <select id="whisper-model" class="s-select"></select>
+            <div id="whisper-model-detail" class="s-note"></div>
+
+            <div id="whisper-progress-wrap" class="whisper-progress-wrap hidden">
+              <progress id="whisper-progress" max="100" value="0"></progress>
+              <span id="whisper-progress-label">0%</span>
+            </div>
+
+            <div class="whisper-actions">
+              <button id="whisper-download" class="s-action">Download</button>
+              <button id="whisper-cancel" class="s-action hidden">Cancel</button>
+              <button id="whisper-import" class="s-action">Import…</button>
+              <button id="whisper-delete" class="s-action danger" disabled>Delete</button>
+            </div>
+
+            <div class="s-field">
+              <span>Language</span>
+              <select id="whisper-language" class="s-select compact">
+                <option value="auto">Auto-detect</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+            <div class="s-field">
+              <span>CPU threads</span>
+              <input id="whisper-threads" type="number" min="0" max="64" step="1" value="0" />
+            </div>
+            <div class="s-note">Use 0 for whisper.cpp's default. English-only models always use English regardless of the language setting.</div>
+          </div>
+
+          <div class="s-status" id="whisper-status"></div>
+        </div>
+
+        <!-- Profile -->
+        <div class="s-tab-pane hidden" data-pane="profile">
+          <label class="s-label">Your resume <span class="s-hint">paste full resume, or import a PDF/DOCX</span></label>
+          <div class="s-field s-upload"><span class="s-filename" id="resume-filename"></span><button class="s-upload-btn" id="upload-resume-btn">Import PDF/DOCX</button></div>
+          <textarea id="resume-text" rows="7" spellcheck="false" placeholder="Paste your full resume here. Ghost will extract Name, Summary, Experience, Skills, Projects, and Education automatically."></textarea>
+
+          <label class="s-label">Target job description <span class="s-hint">optional — every answer gets tailored to this role</span></label>
+          <div class="s-field s-upload"><span class="s-filename" id="jd-filename"></span><button class="s-upload-btn" id="upload-jd-btn">Import PDF/DOCX</button></div>
+          <textarea id="job-description" rows="5" spellcheck="false" placeholder="Paste the job description for the role you're interviewing for. Ghost will highlight your most relevant experience."></textarea>
+        </div>
+
+        <!-- Prep -->
+        <div class="s-tab-pane hidden" data-pane="prep">
+          <label class="s-label">Your STAR stories <span class="s-hint">write 3–5 real behavioral stories</span></label>
+          <textarea id="star-stories" rows="8" spellcheck="false" placeholder="Story 1: At [Company], we faced [situation]. I was responsible for [task]. I did [specific actions]. The result was [outcome with metrics if possible].&#10;&#10;Story 2: ..."></textarea>
+
+          <label class="s-label">Why this company <span class="s-hint">used for motivation questions</span></label>
+          <textarea id="why-company" rows="3" spellcheck="false" placeholder="e.g. I admire how [company] has [specific thing]. Their work on [X] aligns with my experience in [Y]..."></textarea>
+
+          <label class="s-label">Why leaving current role <span class="s-hint">keep it positive</span></label>
+          <textarea id="why-leaving" rows="2" spellcheck="false" placeholder="e.g. I've grown a lot at [company] and I'm looking for [next challenge]..."></textarea>
+
+          <label class="s-label">Work style &amp; values <span class="s-hint">used for culture fit and situational questions</span></label>
+          <textarea id="work-style" rows="3" spellcheck="false" placeholder="e.g. I prefer data-driven decisions, work well with autonomy, value direct feedback, thrive in fast-paced environments..."></textarea>
+        </div>
+
+        <!-- Style -->
+        <div class="s-tab-pane hidden" data-pane="style">
+          <label class="s-label">AI rules <span class="s-hint">how the AI should write its responses</span></label>
+          <textarea id="ai-rules" rows="10" spellcheck="false" maxlength="2000" placeholder="e.g.&#10;- Never use em-dashes.&#10;- Reply in 2-3 short bullet points.&#10;- Use a casual, first-person tone."></textarea>
+          <div class="s-counter"><span id="ai-rules-count">0</span> / 2000</div>
+          <div class="s-hint-block">
+            These rules tell Ghost <strong>how</strong> to write, not <strong>what</strong> to say. They apply to every mode except coding-problem solves (LeetCode), which stays strict. Stored locally; never sent anywhere except the AI provider when Ghost answers a question.
+          </div>
+        </div>
+
+        <!-- Q&A -->
+        <div class="s-tab-pane hidden" data-pane="qa">
+          <label class="s-label">Salary target <span class="s-hint">used when asked about compensation</span></label>
+          <input id="salary-target" type="text" placeholder="e.g. $150k–$180k base + equity, open to discuss total comp" autocomplete="off" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.14);background:rgba(0,0,0,0.25);color:#fff;font-size:13px;font-family:inherit;outline:none;" />
+
+          <label class="s-label" style="margin-top:14px;">Questions to ask the interviewer <span class="s-hint">Ghost will suggest these at the end</span></label>
+          <textarea id="questions-to-ask" rows="6" spellcheck="false" placeholder="e.g.&#10;- What does success look like in the first 90 days?&#10;- How does the team handle technical debt?"></textarea>
+        </div>
+      </div>
+    </aside>
+
+    <div id="toast" class="toast hidden"></div>
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

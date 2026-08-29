@@ -1,0 +1,53 @@
+# ==============================================================================
+# Ghost — .gitignore
+# ==============================================================================
+
+# Dependencies
+node_modules/
+copilot_env/
+.venv/
+venv/
+env/
+
+# Build output & test distributions
+dist/
+dist-test/
+out/
+.cache/
+
+# Native binaries & temporary files
+native/systemaudio
+*.lnk
+*.log
+.DS_Store
+Thumbs.db
+
+# Mobile local files & build artifacts
+local.properties
+**/local.properties
+mobile/android/local.properties
+mobile/android/.gradle/
+mobile/android/app/build/
+mobile/android/build/
+mobile/ios/Pods/
+mobile/ios/build/
+mobile/ios/*.xcworkspace/xcuserdata/
+mobile/ios/*.xcodeproj/xcuserdata/
+
+# AI memory & internal IDE files
+.ai-memory/
+.kiro/
+
+# User data & secrets — NEVER commit these
+cue-data.json
+ghost-data.json
+*.env
+.env*
+!.env.example
+
+# Test artefacts
+test-stt-connection.js
+test-resume.js
+
+# Electron dist cache
+node_modules/electron/dist/electron.exe.bak

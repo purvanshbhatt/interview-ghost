@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0e1726" />
+      <stop offset="100%" stop-color="#030712" />
+    </radialGradient>
+    <linearGradient id="ghostGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Outer background circle with neon ring -->
+  <circle cx="64" cy="64" r="60" fill="url(#bgGlow)" stroke="#06b6d4" stroke-width="2" stroke-opacity="0.4" />
+
+  <!-- Ghost Body -->
+  <g filter="url(#glow)">
+    <path d="M64 24
+             C44 24 32 40 32 60
+             V92
+             C32 95 35 98 38 96
+             C42 93 46 93 50 96
+             C54 99 60 99 64 96
+             C68 93 74 93 78 96
+             C82 99 88 99 90 96
+             C93 94 96 95 96 92
+             V60
+             C96 40 84 24 64 24 Z"
+          fill="url(#ghostGrad)" opacity="0.95" />
+    
+    <!-- Eyes -->
+    <ellipse cx="50" cy="54" rx="5.5" ry="7" fill="#030712" />
+    <ellipse cx="78" cy="54" rx="5.5" ry="7" fill="#030712" />
+    <circle cx="52" cy="52" r="2" fill="#38bdf8" opacity="0.9" />
+    <circle cx="80" cy="52" r="2" fill="#38bdf8" opacity="0.9" />
+  </g>
+</svg>

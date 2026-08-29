@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Ghost",
+    "slug": "ghost-interview-copilot",
+    "scheme": "ghost",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F1117"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ghost.interviewhelper",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Ghost requires microphone access for real-time interview transcription",
+        "UIBackgroundModes": [
+          "audio"
+        ]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F1117"
+      },
+      "package": "com.ghost.interviewhelper",
+      "permissions": [
+        "RECORD_AUDIO",
+        "SYSTEM_ALERT_WINDOW",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_MICROPHONE",
+        "READ_PHONE_STATE",
+        "MODIFY_AUDIO_SETTINGS"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow Ghost to access your microphone for live speech transcription and interview guidance."
+        }
+      ]
+    ]
+  }
+}
+

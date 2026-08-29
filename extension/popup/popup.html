@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ghost Copilot</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="brand">
+        <img src="../icons/icon-48.png" alt="Ghost" class="brand-icon">
+        <div>
+          <h1 class="brand-title">GHOST</h1>
+          <p class="brand-subtitle">Stealth AI Copilot</p>
+        </div>
+      </div>
+      <div class="status-indicator" id="statusPill">
+        <span class="status-dot"></span>
+        <span id="statusLabel">Idle</span>
+      </div>
+    </header>
+
+    <!-- Meeting Detection Banner -->
+    <div class="meeting-detector" id="meetingBanner">
+      <span class="meeting-icon">🎙️</span>
+      <span id="meetingText" class="meeting-name">Scanning active tab...</span>
+    </div>
+
+    <!-- Main Action Button -->
+    <div class="action-section">
+      <button id="btnCaptureToggle" class="btn-capture">
+        <span class="capture-icon">●</span>
+        <span id="captureBtnText">Start Tab Capture</span>
+      </button>
+      <p class="capture-hint">Captures tab audio without muting speaker output</p>
+    </div>
+
+    <!-- Quick Configurations -->
+    <div class="config-grid">
+      <div class="config-item">
+        <label for="selectProvider">AI Provider</label>
+        <select id="selectProvider" class="select-input">
+          <option value="gemini">Google Gemini</option>
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+          <option value="groq">Groq</option>
+          <option value="custom">Custom / Ollama</option>
+        </select>
+      </div>
+
+      <div class="config-item">
+        <label for="selectMode">Default Mode</label>
+        <select id="selectMode" class="select-input">
+          <option value="assist">Assist (Direct)</option>
+          <option value="say">Say (Spoken)</option>
+          <option value="code">Code (LeetCode)</option>
+          <option value="notes">Notes (Minutes)</option>
+          <option value="followup">Follow-up</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Smart Toggle & HUD Control -->
+    <div class="toggle-row">
+      <button id="btnSmartToggle" class="toggle-card">
+        <span class="toggle-icon">🧠</span>
+        <div class="toggle-info">
+          <span class="toggle-title">Smart Reasoning</span>
+          <span class="toggle-sub" id="smartSubText">Fast Tier</span>
+        </div>
+        <span class="toggle-badge" id="smartBadge">Off</span>
+      </button>
+
+      <button id="btnOverlayToggle" class="toggle-card">
+        <span class="toggle-icon">✨</span>
+        <div class="toggle-info">
+          <span class="toggle-title">Meeting HUD</span>
+          <span class="toggle-sub">Show / Hide</span>
+        </div>
+      </button>
+    </div>
+
+    <!-- Footer -->
+    <footer class="popup-footer">
+      <button id="btnOpenOptions" class="btn-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Configure API Keys & Models
+      </button>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

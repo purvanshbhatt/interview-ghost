@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ghost Settings — AI Copilot</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="options-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <img src="../icons/icon-48.png" alt="Ghost" class="brand-icon">
+        <div>
+          <h1 class="brand-title">GHOST</h1>
+          <span class="brand-badge">Manifest V3</span>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <button class="nav-tab active" data-tab="providers">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 14a1 1 0 1 1 1-1 1 1 0 0 1-1 1zm1-5a1 1 0 0 1-2 0V7a1 1 0 0 1 2 0z"/></svg>
+          AI Providers
+        </button>
+        <button class="nav-tab" data-tab="speech">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          Speech & Audio
+        </button>
+        <button class="nav-tab" data-tab="persona">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Persona & Résumé
+        </button>
+        <button class="nav-tab" data-tab="hud">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+          HUD & Overlay
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button id="btnSaveBottom" class="btn-primary">Save Settings</button>
+        <span id="saveToast" class="save-toast">Saved!</span>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Providers Tab -->
+      <section id="tab-providers" class="tab-pane active">
+        <div class="pane-header">
+          <h2>AI Provider Endpoints</h2>
+          <p>Configure your preferred LLM providers and API keys. All keys are encrypted and stored locally on your device.</p>
+        </div>
+
+        <div class="card-group">
+          <!-- Active Provider Selector -->
+          <div class="form-group">
+            <label for="providerSelect">Primary Provider</label>
+            <select id="providerSelect" class="form-select">
+              <option value="gemini">Google Gemini (Recommended for low-latency)</option>
+              <option value="openai">OpenAI (GPT-4o)</option>
+              <option value="anthropic">Anthropic (Claude 3.5)</option>
+              <option value="groq">Groq (Ultra-fast Llama 3.3)</option>
+              <option value="custom">Custom / Ollama (Local)</option>
+            </select>
+          </div>
+
+          <!-- Google Gemini -->
+          <div class="provider-card">
+            <div class="card-title-row">
+              <h3>Google Gemini</h3>
+              <span class="pill-badge">Official</span>
+            </div>
+            <div class="form-group">
+              <label for="geminiApiKey">Gemini API Key</label>
+              <input type="password" id="geminiApiKey" class="form-input" placeholder="AIzaSy..." />
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="geminiModelFast">Fast Tier Model</label>
+                <input type="text" id="geminiModelFast" class="form-input" value="gemini-2.5-flash" />
+              </div>
+              <div class="form-group">
+                <label for="geminiModelSmart">Smart Tier Model</label>
+                <input type="text" id="geminiModelSmart" class="form-input" value="gemini-2.5-pro" />
+              </div>
+            </div>
+          </div>
+
+          <!-- OpenAI -->
+          <div class="provider-card">
+            <div class="card-title-row">
+              <h3>OpenAI</h3>
+            </div>
+            <div class="form-group">
+              <label for="openaiApiKey">OpenAI API Key</label>
+              <input type="password" id="openaiApiKey" class="form-input" placeholder="sk-proj-..." />
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="openaiModelFast">Fast Tier Model</label>
+                <input type="text" id="openaiModelFast" class="form-input" value="gpt-4o-mini" />
+              </div>
+              <div class="form-group">
+                <label for="openaiModelSmart">Smart Tier Model</label>
+                <input type="text" id="openaiModelSmart" class="form-input" value="gpt-4o" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Anthropic -->
+          <div class="provider-card">
+            <div class="card-title-row">
+              <h3>Anthropic</h3>
+            </div>
+            <div class="form-group">
+              <label for="anthropicApiKey">Anthropic API Key</label>
+              <input type="password" id="anthropicApiKey" class="form-input" placeholder="sk-ant-..." />
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="anthropicModelFast">Fast Tier Model</label>
+                <input type="text" id="anthropicModelFast" class="form-input" value="claude-3-5-haiku-20241022" />
+              </div>
+              <div class="form-group">
+                <label for="anthropicModelSmart">Smart Tier Model</label>
+                <input type="text" id="anthropicModelSmart" class="form-input" value="claude-3-5-sonnet-20241022" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Groq -->
+          <div class="provider-card">
+            <div class="card-title-row">
+              <h3>Groq</h3>
+            </div>
+            <div class="form-group">
+              <label for="groqApiKey">Groq API Key</label>
+              <input type="password" id="groqApiKey" class="form-input" placeholder="gsk_..." />
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="groqModelFast">Fast Tier Model</label>
+                <input type="text" id="groqModelFast" class="form-input" value="llama-3.3-70b-versatile" />
+              </div>
+              <div class="form-group">
+                <label for="groqModelSmart">Smart Tier Model</label>
+                <input type="text" id="groqModelSmart" class="form-input" value="deepseek-r1-distill-llama-70b" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Custom / Ollama -->
+          <div class="provider-card">
+            <div class="card-title-row">
+              <h3>Custom / Ollama Local</h3>
+            </div>
+            <div class="form-group">
+              <label for="customEndpoint">Base URL</label>
+              <input type="text" id="customEndpoint" class="form-input" value="http://127.0.0.1:11434/v1" />
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="customApiKey">API Key (Optional)</label>
+                <input type="password" id="customApiKey" class="form-input" placeholder="Optional for local models" />
+              </div>
+              <div class="form-group">
+                <label for="customModel">Model Name</label>
+                <input type="text" id="customModel" class="form-input" value="llama3.2" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Speech & Audio Tab -->
+      <section id="tab-speech" class="tab-pane">
+        <div class="pane-header">
+          <h2>Speech Recognition & Audio Capture</h2>
+          <p>Configure tab audio capture settings, language recognition, and auto-prompting triggers.</p>
+        </div>
+
+        <div class="card-group">
+          <div class="form-group">
+            <label for="sttEngine">Speech-to-Text Engine</label>
+            <select id="sttEngine" class="form-select">
+              <option value="webspeech">Web Speech API (Zero-Config, Free, Built-in)</option>
+              <option value="groq">Groq Whisper (Requires Groq API Key, High Precision)</option>
+              <option value="openai">OpenAI Whisper (Requires OpenAI API Key)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="sttLanguage">Recognition Language</label>
+            <select id="sttLanguage" class="form-select">
+              <option value="en-US">English (United States)</option>
+              <option value="en-GB">English (United Kingdom)</option>
+              <option value="es-ES">Spanish (Spain)</option>
+              <option value="fr-FR">French (France)</option>
+              <option value="de-DE">German (Germany)</option>
+              <option value="zh-CN">Chinese (Simplified)</option>
+              <option value="ja-JP">Japanese</option>
+              <option value="hi-IN">Hindi</option>
+            </select>
+          </div>
+
+          <div class="form-group checkbox-group">
+            <input type="checkbox" id="autoSuggest" />
+            <label for="autoSuggest">Auto-Generate Suggestions on Interviewer Question Completion</label>
+          </div>
+        </div>
+      </section>
+
+      <!-- Persona & Context Tab -->
+      <section id="tab-persona" class="tab-pane">
+        <div class="pane-header">
+          <h2>Candidate Persona & Grounding Context</h2>
+          <p>Provide your background, résumé highlights, and target role details. Ghost uses this to ground answers in your authentic experience.</p>
+        </div>
+
+        <div class="card-group">
+          <div class="form-group">
+            <label for="candidateResume">Candidate Résumé & Work Experience</label>
+            <textarea id="candidateResume" class="form-textarea" rows="6" placeholder="Paste your résumé, key accomplishments, technologies, and metrics here..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="jobDescription">Target Job Description & Company Context</label>
+            <textarea id="jobDescription" class="form-textarea" rows="4" placeholder="Paste the target job description or company background here..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="customAiRules">Custom AI Instructions & Rules</label>
+            <textarea id="customAiRules" class="form-textarea" rows="4" placeholder="E.g., Always mention AWS and Kubernetes. Emphasize senior leadership experience. Keep answers under 3 sentences."></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- HUD & Overlay Tab -->
+      <section id="tab-hud" class="tab-pane">
+        <div class="pane-header">
+          <h2>Floating HUD Preferences</h2>
+          <p>Customize the visual appearance and behavior of the in-meeting overlay.</p>
+        </div>
+
+        <div class="card-group">
+          <div class="form-group">
+            <label for="overlayTheme">Accent Color</label>
+            <select id="overlayTheme" class="form-select">
+              <option value="cyan">Ghost Cyan (Default)</option>
+              <option value="emerald">Emerald Stealth</option>
+              <option value="violet">Neon Violet</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="fontSize">Font Size</label>
+            <select id="fontSize" class="form-select">
+              <option value="small">Compact (12px)</option>
+              <option value="medium">Standard (13px)</option>
+              <option value="large">Large (15px)</option>
+            </select>
+          </div>
+
+          <div class="form-group checkbox-group">
+            <input type="checkbox" id="showTranscriptDrawer" checked />
+            <label for="showTranscriptDrawer">Show Live Transcript Drawer by Default</label>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

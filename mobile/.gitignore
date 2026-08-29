@@ -1,0 +1,4 @@
+.expo/
+*.log
+ios/
+android/.cxx/

@@ -1,0 +1,213 @@
+// Speech-to-text factory. Decoupled from the LLM provider because Anthropic has
+// no audio API — we transcribe with whatever audio-capable key is available, and
+// fall back across providers. Returns { text, provider } or { text:'', error }.
+const { pcmToWav } = require('./wav');
+const { formatProviderErrorMessage, isQuotaError, CURRENT_GEMINI_DEFAULT } = require('./llm');
+
+const BASE_VOCAB = 'CI/CD, Docker, Kubernetes, Terraform, Jenkins, AWS, Azure, GCP, ' +
+  'CodeCommit, CodePipeline, CodeBuild, CodeDeploy, DevOps, SRE, microservices, deployment, ' +
+  'pipeline, container, orchestration, Ansible, Prometheus, Grafana, Helm, EKS, ECS, Lambda, ' +
+  'S3, EC2, IAM, GitHub Actions, GitLab, Kafka, PostgreSQL, Redis, MongoDB, REST API, gRPC';
+
+function looksLikeHallucination(raw) {
+  const trimmed = (raw || '').trim();
+  if (!trimmed) return true;
+  if (/^[\p{Emoji_Presentation}\p{Extended_Pictographic}\s]+$/u.test(trimmed)) return true;
+  const t = trimmed.replace(/[.,!?…]+$/g, '').trim().toLowerCase();
+  const artifacts = new Set([
+    'thank you', 'thank you very much', 'thank you for watching', 'thanks for watching',
+    'please subscribe', 'like and subscribe', 'bye-bye', 'bye bye', 'bye', 'you', 'okay'
+  ]);
+  return artifacts.has(t);
+}
+
+function buildVocabPrompt(settings) {
+  const s = settings || {};
+  const text = (s.resumeText || '') + ' ' + (s.jobDescription || '');
+  const proper = Array.from(new Set(text.match(/\b([A-Z][a-zA-Z0-9+.#]{2,}|[A-Z]{2,6})\b/g) || []));
+  let prompt = BASE_VOCAB + (proper.length ? ', ' + proper.slice(0, 60).join(', ') : '');
+  if (prompt.length > 850) prompt = prompt.slice(0, 850);
+  return prompt;
+}
+
+async function transcribeOpenAI(apiKey, wav, model, baseURL, prompt) {
+  const OpenAI = require('openai');
+  const toFile = OpenAI.toFile || require('openai/uploads').toFile;
+  const client = new OpenAI({ apiKey, baseURL });
+  const file = await toFile(wav, 'audio.wav', { type: 'audio/wav' });
+  const res = await client.audio.transcriptions.create({
+    file,
+    model: model || 'whisper-1',
+    language: 'en',
+    temperature: 0,
+    prompt: prompt || ''
+  });
+  return (res.text || '').trim();
+}
+
+
+async function transcribeDeepgram(apiKey, wav) {
+  const https = require('https');
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: 'api.deepgram.com',
+      path: '/v1/listen?model=nova-3&smart_format=true',
+      method: 'POST',
+      headers: {
+        'Authorization': 'Token ' + apiKey,
+        'Content-Type': 'audio/wav',
+        'Content-Length': wav.length,
+      }
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          const transcript = parsed?.results?.channels?.[0]?.alternatives?.[0]?.transcript || '';
+          resolve(transcript.trim());
+        } catch (e) {
+          resolve('');
+        }
+      });
+    });
+    req.on('error', reject);
+    req.write(wav);
+    req.end();
+  });
+}
+
+async function transcribeGemini(apiKey, wav) {
+  const { GoogleGenAI } = require('@google/genai');
+  const ai = new GoogleGenAI({ apiKey });
+  const res = await ai.models.generateContent({
+    model: CURRENT_GEMINI_DEFAULT,
+    contents: [{ role: 'user', parts: [
+      { text: 'Transcribe this audio verbatim. Return only the spoken words with no commentary. If there is no clear speech, return an empty response.' },
+      { inlineData: { mimeType: 'audio/wav', data: wav.toString('base64') } }
+    ] }]
+  });
+  return ((res && res.text) || '').trim();
+}
+
+async function transcribeGeminiTranscribe(apiKey, wav) {
+  const https = require('https');
+  const payload = JSON.stringify({
+    model: 'gemini-3.5-transcribe',
+    input: [
+      {
+        type: 'audio',
+        data: wav.toString('base64'),
+        mime_type: 'audio/wav'
+      }
+    ],
+    generation_config: {
+      transcription_config: {
+        mode: {
+          type: 'smart'
+        }
+      }
+    }
+  });
+
+  try {
+    const transcript = await new Promise((resolve, reject) => {
+      const req = https.request({
+        hostname: 'generativelanguage.googleapis.com',
+        path: '/v1beta/interactions',
+        method: 'POST',
+        headers: {
+          'x-goog-api-key': apiKey,
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload)
+        }
+      }, (res) => {
+        let data = '';
+        res.on('data', chunk => { data += chunk; });
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            try {
+              const parsed = JSON.parse(data);
+              const text = parsed.output_text || parsed.text || parsed.outputs?.[0]?.text || '';
+              resolve(text.trim());
+            } catch (e) {
+              resolve('');
+            }
+          } else {
+            reject(new Error(`Gemini Transcribe HTTP ${res.statusCode}: ${data}`));
+          }
+        });
+      });
+      req.on('error', reject);
+      req.write(payload);
+      req.end();
+    });
+    if (transcript) return transcript;
+  } catch (err) {
+    // If the 3.5 transcribe interactions endpoint is unavailable, fall back to generateContent
+  }
+
+  return transcribeGemini(apiKey, wav);
+}
+
+function createSTT(settings) {
+  const keys = settings.apiKeys || {};
+  const selectedProvider = settings.sttProvider || 'auto';
+  const vocabPrompt = buildVocabPrompt(settings);
+  const chain = [];
+  if ((selectedProvider === 'auto' || selectedProvider === 'openai') && keys.openai) {
+    chain.push({ p: 'openai', fn: (wav) => transcribeOpenAI(keys.openai, wav, settings.sttModel, undefined, vocabPrompt) });
+  }
+  if ((selectedProvider === 'auto' || selectedProvider === 'groq') && keys.groq) {
+    chain.push({ p: 'groq', fn: (wav) => transcribeOpenAI(keys.groq, wav, 'whisper-large-v3-turbo', 'https://api.groq.com/openai/v1', vocabPrompt) });
+  }
+  if ((selectedProvider === 'auto' || selectedProvider === 'deepgram') && keys.deepgram) {
+    chain.push({ p: 'deepgram', fn: (wav) => transcribeDeepgram(keys.deepgram, wav) });
+  }
+  if ((selectedProvider === 'auto' || selectedProvider === 'gemini-transcribe' || selectedProvider === 'gemini') && keys.gemini) {
+    chain.push({
+      p: selectedProvider === 'gemini' ? 'gemini' : 'gemini-transcribe',
+      fn: (wav) => selectedProvider === 'gemini' ? transcribeGemini(keys.gemini, wav) : transcribeGeminiTranscribe(keys.gemini, wav)
+    });
+  }
+  if (keys.openai && chain.length > 1) chain.unshift(chain.splice(chain.findIndex((c) => c.p === 'openai'), 1)[0]);
+
+  let disabledUntil = 0;
+  let lastProvider = null;
+
+  return {
+    available: chain.length > 0,
+    providers: chain.map((c) => c.p),
+    async transcribe(pcm) {
+      if (!chain.length || !pcm || pcm.length < 3200) return { text: '' };
+      const now = Date.now();
+      if (disabledUntil && now < disabledUntil) return { text: '', error: { provider: lastProvider, message: `Temporary ${lastProvider || 'provider'} quota or rate-limit; waiting 30s before retrying.` } };
+      const wav = pcmToWav(pcm, 16000, 1);
+      let lastErr = null;
+      for (const c of chain) {
+        try {
+          const text = await c.fn(wav);
+          disabledUntil = 0;
+          lastProvider = c.p;
+          if (looksLikeHallucination(text)) return { text: '', provider: c.p };
+          return { text, provider: c.p };
+        } catch (e) {
+          // Shares detection/wording with the LLM error path (src/llm.js) so a
+          // 404 (dead/misspelled model) or 429 (quota) reads the same whether it
+          // came from a chat request or a transcription request.
+          const quota = isQuotaError(e);
+          const message = formatProviderErrorMessage(e, c.p);
+          lastErr = { status: e && e.status, code: e && e.code, message, provider: c.p };
+          if (quota) {
+            lastProvider = c.p;
+            disabledUntil = now + 30000;
+            break;
+          }
+        }
+      }
+      return { text: '', error: lastErr };
+    }
+  };
+}
+
+module.exports = { createSTT, looksLikeHallucination, buildVocabPrompt };

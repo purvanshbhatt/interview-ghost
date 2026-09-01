@@ -6,12 +6,12 @@
 **A multi-surface, translucent AI copilot that sees your screen, listens to meeting audio in real-time, and remains completely invisible to screen shares and proctoring software.**
 
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
-[![Platform: Desktop | Web | Mobile](https://img.shields.io/badge/Platforms-macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20Chrome%20%7C%20iOS%20%7C%20Android-green.svg)](#-platform-support)
+[![Platform: Desktop | Web | Mobile](https://img.shields.io/badge/Platforms-macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20Chrome%20%7C%20iOS%20%7C%20Android-green.svg)](#-multi-surface-architecture)
 [![Electron](https://img.shields.io/badge/Electron-44.x-47848F.svg)](https://www.electronjs.org/)
-[![Chrome MV3](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg)](#-chrome-web-extension)
-[![Expo / React Native](https://img.shields.io/badge/Mobile-Expo%2054%20%7C%20React%20Native%200.76-61DAFB.svg)](#-mobile-app-ios--android)
+[![Chrome MV3](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg)](#2-chrome-web-extension-manifest-v3)
+[![Expo / React Native](https://img.shields.io/badge/Mobile-Expo%2054%20%7C%20React%20Native%200.76-61DAFB.svg)](#3-android-application)
 
-<img src="docs/tutorial.png" width="680" alt="Ghost Stealth AI Copilot UI" />
+<img src="docs/overlay-v2.png" width="720" alt="Ghost V2 frosted-glass overlay — session pill, live AI panel, and composer" />
 
 </div>
 
@@ -40,7 +40,7 @@ If you just want to run Ghost immediately without compiling from source:
 
 ## 🌟 Multi-Surface Architecture
 
-Ghost operates seamlessly across multiple surfaces:
+Ghost operates seamlessly across three surfaces:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -55,12 +55,12 @@ Ghost operates seamlessly across multiple surfaces:
 ```
 
 ### 1. 🖥️ Desktop Application (Electron + Node.js)
-* **Obsidian Frosted-Glass Stealth UI**: High-contrast, translucent dark backdrop (`rgba(10, 12, 16, 0.72)`) with 28px blur. Keeps eye contact with interviewers while reading answers.
-* **100% Stealth Screen Protection**: OS-level capture exclusion (`WDA_EXCLUDEFROMCAPTURE` on Windows, `NSWindowSharingNone` on macOS, transparency on Linux) ensures the overlay is invisible to Zoom, Teams, Meet, and proctoring tools.
+* **V2 Frosted-Glass HUD**: Indigo-tinted translucent overlay with a session pill, glass response panel, and pill composer — high contrast for reading answers while keeping eye contact with interviewers.
+* **100% Stealth Screen Protection**: OS-level capture exclusion (`WDA_EXCLUDEFROMCAPTURE` on Windows, `NSWindowSharingNone` on macOS, transparent click-through on Linux) makes the overlay invisible to Zoom, Teams, Meet, and proctoring tools.
 * **Transcription Containment**: Real-time speech transcription is isolated strictly to the conversation drawer (0px layout jump on composer).
 * **Self-Healing LLM Engine**: Fast and Smart reasoning tiers across Google Gemini, OpenAI, Anthropic Claude, Groq, MiniMax, Azure, and Ollama with automatic fallback on quota exhaustion (429) or retired models (404).
 
-### 2. 🌐 Standalone Chrome Web Extension (Manifest V3)
+### 2. 🌐 Chrome Web Extension (Manifest V3)
 * **Zero Installation**: Injects a sleek floating HUD directly into meeting tabs (Google Meet, Zoom Web, Microsoft Teams).
 * **Offscreen Tab Audio**: Captures system/meeting audio via `chrome.tabCapture` with isolated Shadow DOM styling.
 
@@ -100,10 +100,7 @@ cd interview-ghost
 # 2. Install dependencies
 npm install
 
-# 3. Setup environment template (optional - keys can be entered directly in UI)
-cp .env.example .env
-
-# 4. Run Ghost in development mode
+# 3. Run Ghost in development mode
 npm start
 ```
 
@@ -174,11 +171,11 @@ open Ghost.xcworkspace
 
 ## 🔑 AI Providers & Configuration
 
-Ghost supports **8 distinct LLM backends**. Bring your own API key—keys are stored strictly on your local device:
+Ghost supports **8 distinct LLM backends**. Bring your own API key — keys are stored strictly on your local device:
 
 | Provider | Recommended Fast Model | Recommended Smart Model | Streaming | Setup Link |
 |---|---|---|---|---|
-| **Google Gemini** | `gemini-2.5-flash` / `gemini-3.6-flash` | `gemini-2.5-pro` | ✅ | [Google AI Studio](https://aistudio.google.com/apikey) |
+| **Google Gemini** | `gemini-2.5-flash` | `gemini-2.5-pro` | ✅ | [Google AI Studio](https://aistudio.google.com/apikey) |
 | **OpenAI** | `gpt-4o-mini` | `gpt-4o` | ✅ | [OpenAI Platform](https://platform.openai.com/api-keys) |
 | **Anthropic Claude** | `claude-3-5-haiku-latest` | `claude-3-5-sonnet-latest` | ✅ | [Anthropic Console](https://console.anthropic.com/) |
 | **Groq** | `llama-3.1-8b-instant` | `llama-3.3-70b-versatile` | ✅ | [Groq Console](https://console.groq.com/) |
@@ -213,7 +210,7 @@ To ensure Zoom excludes Ghost during full-screen sharing:
 
 ## 🧪 Testing & Verification
 
-Ghost comes with a comprehensive automated test suite covering all modules:
+Ghost ships with a comprehensive automated test suite covering every module:
 
 ```bash
 # Run all unit, integration, and E2E tests

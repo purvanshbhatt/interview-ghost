@@ -3,37 +3,276 @@
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;" />
-  <title>Ghost Dashboard</title>
+  <title>Ghost — Invisible AI Copilot</title>
   <link rel="stylesheet" href="dashboard.css" />
 </head>
 <body>
   <div id="dashboard-root">
-    <header class="dash-header">
-      <div class="dash-title-group">
-        <h1>Ghost</h1>
-        <p class="dash-sub">Pick a mode to launch the floating overlay. Drop up to 5 context files under each mode to ground its answers.</p>
+    <!-- Top Bar / App Header -->
+    <header class="dash-header drag-handle">
+      <div class="dash-branding no-drag">
+        <div class="ghost-logo-emblem">
+          <span class="ghost-glow-dot"></span>
+          <img src="assets/logo.png" width="24" height="24" alt="Ghost Logo" style="display:block; object-fit:contain;" />
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">GHOST</span>
+          <span class="brand-version">v0.2.2 · STEALTH COPILOT</span>
+        </div>
       </div>
-      <div class="dash-actions">
-        <button id="past-sessions-btn" class="dash-link">Past Sessions</button>
-        <button id="settings-btn" class="dash-link">Settings</button>
+
+      <!-- Navigation tabs -->
+      <nav class="dash-nav no-drag">
+        <button id="nav-modes" class="nav-tab active">
+          <span class="nav-icon">⚡</span>
+          <span>Modes</span>
+        </button>
+        <button id="nav-guide" class="nav-tab">
+          <span class="nav-icon">🚀</span>
+          <span>Setup &amp; Guide</span>
+          <span id="guide-badge" class="nav-badge hidden">!</span>
+        </button>
+        <button id="nav-sessions" class="nav-tab">
+          <span class="nav-icon">📁</span>
+          <span>Past Sessions</span>
+        </button>
+        <button id="nav-settings" class="nav-tab">
+          <span class="nav-icon">⚙️</span>
+          <span>Settings</span>
+        </button>
+      </nav>
+
+      <!-- Telemetry status pills -->
+      <div class="dash-telemetry no-drag">
+        <div id="telemetry-stealth" class="tele-pill" title="Screen share invisibility protection status">
+          <span class="tele-dot green"></span>
+          <span class="tele-text">STEALTH SHIELD</span>
+        </div>
+        <div id="telemetry-provider" class="tele-pill" title="Active AI provider">
+          <span class="tele-icon">⚡</span>
+          <span id="tele-provider-name" class="tele-text">GEMINI</span>
+        </div>
       </div>
-      <div class="win-controls">
-        <button id="win-minimize" class="win-btn" title="Minimize">─</button>
+
+      <!-- Window controls -->
+      <div class="win-controls no-drag">
+        <button id="win-minimize" class="win-btn" title="Minimize Window">─</button>
+        <button id="win-maximize" class="win-btn" title="Toggle Fullscreen / Maximize">□</button>
         <button id="win-close" class="win-btn win-close" title="Close Ghost">✕</button>
       </div>
     </header>
 
+    <!-- Main Container -->
     <main class="dash-main">
-      <section id="mode-cards" class="mode-cards" aria-label="Modes">
-        <p class="dash-loading">Loading modes...</p>
+      <!-- VIEW 1: Modes Grid (Personality Overhaul) -->
+      <section id="modes-view" class="dash-view">
+        <div class="view-hero">
+          <div class="hero-content">
+            <h1 class="hero-title">Select Copilot Mode</h1>
+            <p class="hero-sub">Ground Ghost with up to 5 context files per mode (resumes, job specs, slide decks, or problem sets). Launch into a stealth floating overlay that seamlessly watches and listens.</p>
+          </div>
+          <div class="hero-quick-actions">
+            <button id="hero-quick-launch" class="btn-glow-primary">
+              <span class="btn-icon">⚡</span>
+              <span>Launch Default Overlay</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="mode-cards" class="mode-cards" aria-label="Copilot Modes">
+          <p class="dash-loading">Loading tactical modes...</p>
+        </div>
+      </section>
+
+      <!-- VIEW 2: Redesigned Setup & Instructions Guide -->
+      <section id="guide-view" class="dash-view hidden">
+        <div class="view-hero">
+          <div class="hero-content">
+            <h1 class="hero-title">Setup &amp; Tactical Guide</h1>
+            <p class="hero-sub">Everything you need to master Ghost stealth copilot. Connect your AI provider, configure loopback audio, ground your background profile, and stay invisible on screen shares.</p>
+          </div>
+          <div class="readiness-summary-card">
+            <div class="summary-score-col">
+              <div id="readiness-score" class="readiness-score">0/4</div>
+              <div class="readiness-score-label">Readiness</div>
+            </div>
+            <div class="summary-text-col">
+              <div id="readiness-headline" class="readiness-headline">Setup in progress</div>
+              <div class="readiness-sub">Complete the checks below to ensure optimal low-latency AI performance during live calls.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Readiness Checklist -->
+        <div class="guide-checklist-grid">
+          <div class="checklist-card" id="check-key-card">
+            <div class="check-header">
+              <span class="check-badge" id="check-key-badge">⚠️ Missing</span>
+              <h3 class="check-title">1. AI Provider &amp; API Key</h3>
+            </div>
+            <p class="check-desc">Ghost connects directly to your chosen LLM provider (Gemini, Claude, OpenAI, Groq, Ollama, Azure, or MiniMax) using your own private key.</p>
+            <div class="check-action-row">
+              <button class="guide-action-btn" id="guide-goto-keys">Configure Keys &rarr;</button>
+            </div>
+          </div>
+
+          <div class="checklist-card" id="check-audio-card">
+            <div class="check-header">
+              <span class="check-badge" id="check-audio-badge">✓ Configured</span>
+              <h3 class="check-title">2. Dual Audio Capture</h3>
+            </div>
+            <p class="check-desc">Captures your mic and the other person's meeting audio via system loopback. Choose Local Whisper for 100% offline privacy, or Gemini Transcribe / Deepgram for ultra-low latency.</p>
+            <div class="check-action-row">
+              <button class="guide-action-btn" id="guide-goto-audio">Audio Settings &rarr;</button>
+            </div>
+          </div>
+
+          <div class="checklist-card" id="check-profile-card">
+            <div class="check-header">
+              <span class="check-badge" id="check-profile-badge">⚠️ Not Set</span>
+              <h3 class="check-title">3. Resume &amp; STAR Stories</h3>
+            </div>
+            <p class="check-desc">Import your resume and job description. Ghost extracts your project experience, STAR behavioral stories, and compensation targets to answer in your authentic voice.</p>
+            <div class="check-action-row">
+              <button class="guide-action-btn" id="guide-goto-profile">Import Resume &rarr;</button>
+            </div>
+          </div>
+
+          <div class="checklist-card" id="check-stealth-card">
+            <div class="check-header">
+              <span class="check-badge" id="check-stealth-badge">🛡️ Protected</span>
+              <h3 class="check-title">4. Screen Share Invisibility</h3>
+            </div>
+            <p class="check-desc">Ghost uses OS hardware content protection (<code>SetWindowDisplayAffinity</code>). Hidden automatically on Google Meet, Teams, Discord, and Slack.</p>
+            <div class="check-action-row">
+              <a href="#guide-stealth-section" class="guide-action-btn guide-scroll-btn">View Zoom Guide &darr;</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Deep Dive Tactical Sections -->
+        <div class="guide-sections-container">
+          <!-- Shortcuts Cheatsheet -->
+          <div class="guide-section-card">
+            <div class="section-card-header">
+              <span class="section-icon">⌨️</span>
+              <h2>Global Keyboard Shortcuts</h2>
+            </div>
+            <p class="section-lead">Control Ghost from anywhere on your desktop with zero window switching or cursor movement:</p>
+            <div class="shortcuts-table">
+              <div class="shortcut-row">
+                <div class="shortcut-keys" id="sc-assist-keys">
+                  <kbd>Ctrl</kbd> + <kbd>Enter</kbd>
+                </div>
+                <div class="shortcut-meta">
+                  <strong>Assist Mode</strong>
+                  <span>Instant screen capture OCR + recent conversation transcript analysis.</span>
+                </div>
+              </div>
+              <div class="shortcut-row">
+                <div class="shortcut-keys" id="sc-say-keys">
+                  <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Enter</kbd>
+                </div>
+                <div class="shortcut-meta">
+                  <strong>What Should I Say?</strong>
+                  <span>Generates direct, crisp talking points for the interviewer's latest question.</span>
+                </div>
+              </div>
+              <div class="shortcut-row">
+                <div class="shortcut-keys" id="sc-solve-keys">
+                  <kbd>Ctrl</kbd> + <kbd>H</kbd>
+                </div>
+                <div class="shortcut-meta">
+                  <strong>LeetCode &amp; Coding Solver</strong>
+                  <span>Detects coding problems on screen; outputs optimal complexity, logic, and code.</span>
+                </div>
+              </div>
+              <div class="shortcut-row">
+                <div class="shortcut-keys" id="sc-hide-keys">
+                  <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>/</kbd>
+                </div>
+                <div class="shortcut-meta">
+                  <strong>Toggle Pill Visibility</strong>
+                  <span>Instantly hide or reveal the floating overlay pill.</span>
+                </div>
+              </div>
+              <div class="shortcut-row">
+                <div class="shortcut-keys" id="sc-quit-keys">
+                  <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd>
+                </div>
+                <div class="shortcut-meta">
+                  <strong>Stealth Emergency Quit</strong>
+                  <span>Immediately terminates all Ghost background processes and windows.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stealth & Screen Share Invisibility Guide -->
+          <div class="guide-section-card" id="guide-stealth-section">
+            <div class="section-card-header">
+              <span class="section-icon">🫥</span>
+              <h2>Stealth &amp; Invisibility Setup</h2>
+            </div>
+            <div class="stealth-grid">
+              <div class="stealth-item">
+                <div class="stealth-app-name">
+                  <span class="app-dot green"></span>
+                  <strong>Google Meet / Microsoft Teams / Slack / Discord</strong>
+                </div>
+                <p><strong>100% Invisible automatically.</strong> OS-level display affinity masks Ghost windows from browser screen capture, window pickers, and desktop recordings.</p>
+              </div>
+
+              <div class="stealth-item highlight">
+                <div class="stealth-app-name">
+                  <span class="app-dot orange"></span>
+                  <strong>Zoom Meeting Setup (Important)</strong>
+                </div>
+                <p>Zoom uses custom desktop capture hooks. To ensure Ghost remains invisible in Zoom:</p>
+                <ol class="stealth-steps">
+                  <li>Open <strong>Zoom Settings &rarr; Share Screen</strong></li>
+                  <li>Click <strong>Advanced</strong> at the bottom</li>
+                  <li>Under <strong>Screen capture mode</strong>, select: <span class="highlight-text">"Advanced capture with window filtering"</span></li>
+                  <li><em>Never select "Advanced capture without window filtering"</em></li>
+                </ol>
+              </div>
+            </div>
+          </div>
+
+          <!-- Android & Phone Link Section -->
+          <div class="guide-section-card">
+            <div class="section-card-header">
+              <span class="section-icon">📱</span>
+              <h2>Phone Call &amp; Mobile Interview Setup</h2>
+            </div>
+            <p class="section-lead">Take phone screeners and mobile interviews with Ghost's stealth guidance:</p>
+            <div class="android-methods-grid">
+              <div class="method-card">
+                <div class="method-num">Method 1</div>
+                <h4>Windows Phone Link (Recommended)</h4>
+                <p>Link your phone via Microsoft Phone Link. Answer phone calls right on your PC — Ghost automatically transcribes the recruiter via the loopback channel.</p>
+                <button id="guide-open-phonelink" class="guide-mini-btn">Launch Phone Link</button>
+              </div>
+              <div class="method-card">
+                <div class="method-num">Method 2</div>
+                <h4>ADB Android Bridge</h4>
+                <p>Connect your phone via USB with USB Debugging enabled. Ghost can grab live Android screenshots and forward real-time interview context.</p>
+                <button id="guide-open-android-settings" class="guide-mini-btn">Configure ADB Bridge</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </main>
 
     <!-- Past Sessions drawer (hidden by default) -->
     <aside id="past-sessions-drawer" class="drawer hidden" aria-label="Past sessions">
       <div class="drawer-head">
-        <h2>Past Sessions</h2>
-        <button id="close-past-sessions" class="drawer-close">Close</button>
+        <div class="drawer-title-group">
+          <h2>Past Sessions</h2>
+          <span class="drawer-subtitle">Search and review past interview transcripts and AI takeaways.</span>
+        </div>
+        <button id="close-past-sessions" class="drawer-close">✕ Close</button>
       </div>
       <ul id="past-sessions-list" class="past-sessions-list">
         <li class="past-empty">No sessions yet. End a session to create your first one.</li>
@@ -43,20 +282,17 @@
       </article>
     </aside>
 
-    <!-- Settings drawer (hidden by default) -->
+    <!-- Unified Settings drawer (hidden by default) -->
     <aside id="settings-drawer" class="drawer settings-drawer hidden" aria-label="Settings">
       <div class="drawer-head">
-        <h2>Settings</h2>
+        <div class="drawer-title-group">
+          <h2>Ghost Settings</h2>
+          <span class="drawer-subtitle">Configurations auto-save and synchronize live with the overlay pill.</span>
+        </div>
         <button id="close-settings" class="drawer-close">Done</button>
       </div>
 
       <div class="settings-body">
-        <label class="settings-row settings-row-check">
-          <input type="checkbox" id="save-transcripts-toggle" />
-          <span>Save transcripts to disk after each session (<code>meeting_*.txt</code> in <code>&lt;userData&gt;/transcripts</code>)</span>
-        </label>
-        <p class="settings-hint">Unchecked, sessions still leave a structured meeting record in <code>meetings.json</code> for memory injection, but no transcript .txt is written. Audio is never recorded to disk in either mode.</p>
-
         <div class="s-tabs" id="settings-tabs">
           <button class="s-tab on" data-tab="keys">🔑 Keys</button>
           <button class="s-tab" data-tab="audio">🎙 Audio</button>
@@ -64,12 +300,14 @@
           <button class="s-tab" data-tab="prep">🎯 Prep</button>
           <button class="s-tab" data-tab="style">✨ Style</button>
           <button class="s-tab" data-tab="qa">💬 Q&amp;A</button>
+          <button class="s-tab" data-tab="android">📱 Android</button>
+          <button class="s-tab" data-tab="general">⚙️ General</button>
         </div>
         <div class="s-saved" id="settings-saved">Saved</div>
 
-        <!-- Keys -->
+        <!-- TAB 1: Keys -->
         <div class="s-tab-pane" data-pane="keys">
-          <label class="s-label">Provider</label>
+          <label class="s-label">Active AI Provider</label>
           <div class="s-seg s-seg-wrap" id="provider-seg">
             <button data-provider="openai">OpenAI</button>
             <button data-provider="anthropic">Anthropic</button>
@@ -81,7 +319,7 @@
             <button data-provider="azure">Azure AI</button>
           </div>
 
-          <label class="s-label">API keys &amp; URLs <span class="s-hint">stored locally · never sent to any server</span></label>
+          <label class="s-label">API keys &amp; URLs <span class="s-hint">stored locally in encrypted store · never sent to external servers</span></label>
           <div class="s-field"><span>OpenAI</span><input id="key-openai" type="password" placeholder="sk-..." autocomplete="off" /></div>
           <div class="s-field"><span>Anthropic</span><input id="key-anthropic" type="password" placeholder="sk-ant-..." autocomplete="off" /></div>
           <div class="s-field"><span>Gemini</span><input id="key-gemini" type="password" placeholder="AIza..." autocomplete="off" /></div>
@@ -89,7 +327,7 @@
           <div class="s-field"><span>Custom</span><input id="key-custom" type="password" placeholder="optional" autocomplete="off" /></div>
           <div class="s-field"><span>MiniMax</span><input id="key-minimax" type="password" placeholder="MiniMax API key" autocomplete="off" /></div>
 
-          <label class="s-label">MiniMax region <span class="s-hint">keys are region-bound</span></label>
+          <label class="s-label">MiniMax region <span class="s-hint">Global vs China server cluster</span></label>
           <div class="s-seg" id="minimax-region-seg">
             <button data-region="global_en">Global</button>
             <button data-region="cn_zh">China</button>
@@ -106,27 +344,27 @@
           <label class="s-label">Azure endpoint <span class="s-hint">Azure OpenAI or AI Foundry endpoint</span></label>
           <div class="s-field"><span>Endpoint</span><input id="azure-endpoint" type="text" placeholder="https://host.cognitiveservices.azure.com" autocomplete="off" /></div>
 
-          <label class="s-label">Models <span class="s-hint">fast = Smart off · smart = Smart on</span></label>
+          <label class="s-label">Models <span class="s-hint">fast = standard mode · smart = Smart deep reasoning</span></label>
           <div class="s-field"><span>Fast</span><input id="model-fast" type="text" autocomplete="off" /></div>
           <div class="s-field"><span>Smart</span><input id="model-smart" type="text" autocomplete="off" /></div>
         </div>
 
-        <!-- Audio -->
+        <!-- TAB 2: Audio & Transcription -->
         <div class="s-tab-pane hidden" data-pane="audio">
           <label class="s-label">Speech-to-text provider</label>
           <div class="s-seg s-seg-wrap" id="stt-provider-seg">
             <button data-stt-provider="auto">Auto</button>
-            <button data-stt-provider="local">Local</button>
+            <button data-stt-provider="local">Local (Whisper)</button>
             <button data-stt-provider="deepgram">Deepgram</button>
             <button data-stt-provider="openai">OpenAI</button>
             <button data-stt-provider="gemini">Gemini</button>
             <button data-stt-provider="gemini-transcribe">Gemini Transcribe</button>
           </div>
-          <div class="s-note">Local mode keeps microphone and meeting audio on this computer. It never silently falls back to a cloud transcription provider.</div>
+          <div class="s-note">Local mode keeps all audio 100% on your machine with offline Whisper. Cloud modes (Deepgram / Gemini Transcribe) provide instant live streaming transcription.</div>
 
           <div class="whisper-card">
             <div class="whisper-runtime-row">
-              <span class="s-label">whisper.cpp runtime</span>
+              <span class="s-label">whisper.cpp offline runtime</span>
               <span id="whisper-runtime-status" class="whisper-badge">Checking…</span>
             </div>
 
@@ -157,55 +395,88 @@
               <span>CPU threads</span>
               <input id="whisper-threads" type="number" min="0" max="64" step="1" value="0" />
             </div>
-            <div class="s-note">Use 0 for whisper.cpp's default. English-only models always use English regardless of the language setting.</div>
+            <div class="s-note">Use 0 for whisper.cpp default thread count.</div>
           </div>
 
           <div class="s-status" id="whisper-status"></div>
         </div>
 
-        <!-- Profile -->
+        <!-- TAB 3: Profile & Resume -->
         <div class="s-tab-pane hidden" data-pane="profile">
-          <label class="s-label">Your resume <span class="s-hint">paste full resume, or import a PDF/DOCX</span></label>
+          <label class="s-label">Your resume <span class="s-hint">paste text or import PDF/DOCX</span></label>
           <div class="s-field s-upload"><span class="s-filename" id="resume-filename"></span><button class="s-upload-btn" id="upload-resume-btn">Import PDF/DOCX</button></div>
           <textarea id="resume-text" rows="7" spellcheck="false" placeholder="Paste your full resume here. Ghost will extract Name, Summary, Experience, Skills, Projects, and Education automatically."></textarea>
 
-          <label class="s-label">Target job description <span class="s-hint">optional — every answer gets tailored to this role</span></label>
+          <label class="s-label">Target job description <span class="s-hint">answers get laser-tailored to this position</span></label>
           <div class="s-field s-upload"><span class="s-filename" id="jd-filename"></span><button class="s-upload-btn" id="upload-jd-btn">Import PDF/DOCX</button></div>
           <textarea id="job-description" rows="5" spellcheck="false" placeholder="Paste the job description for the role you're interviewing for. Ghost will highlight your most relevant experience."></textarea>
         </div>
 
-        <!-- Prep -->
+        <!-- TAB 4: Interview Prep -->
         <div class="s-tab-pane hidden" data-pane="prep">
-          <label class="s-label">Your STAR stories <span class="s-hint">write 3–5 real behavioral stories</span></label>
+          <label class="s-label">Your STAR stories <span class="s-hint">write 3–5 behavioral stories for behavioral questions</span></label>
           <textarea id="star-stories" rows="8" spellcheck="false" placeholder="Story 1: At [Company], we faced [situation]. I was responsible for [task]. I did [specific actions]. The result was [outcome with metrics if possible].&#10;&#10;Story 2: ..."></textarea>
 
           <label class="s-label">Why this company <span class="s-hint">used for motivation questions</span></label>
           <textarea id="why-company" rows="3" spellcheck="false" placeholder="e.g. I admire how [company] has [specific thing]. Their work on [X] aligns with my experience in [Y]..."></textarea>
 
-          <label class="s-label">Why leaving current role <span class="s-hint">keep it positive</span></label>
+          <label class="s-label">Why leaving current role <span class="s-hint">positive framing</span></label>
           <textarea id="why-leaving" rows="2" spellcheck="false" placeholder="e.g. I've grown a lot at [company] and I'm looking for [next challenge]..."></textarea>
 
-          <label class="s-label">Work style &amp; values <span class="s-hint">used for culture fit and situational questions</span></label>
+          <label class="s-label">Work style &amp; values <span class="s-hint">used for culture fit</span></label>
           <textarea id="work-style" rows="3" spellcheck="false" placeholder="e.g. I prefer data-driven decisions, work well with autonomy, value direct feedback, thrive in fast-paced environments..."></textarea>
         </div>
 
-        <!-- Style -->
+        <!-- TAB 5: AI Style Rules -->
         <div class="s-tab-pane hidden" data-pane="style">
-          <label class="s-label">AI rules <span class="s-hint">how the AI should write its responses</span></label>
-          <textarea id="ai-rules" rows="10" spellcheck="false" maxlength="2000" placeholder="e.g.&#10;- Never use em-dashes.&#10;- Reply in 2-3 short bullet points.&#10;- Use a casual, first-person tone."></textarea>
+          <label class="s-label">AI style rules <span class="s-hint">customize how the AI writes its answers</span></label>
+          <textarea id="ai-rules" rows="10" spellcheck="false" maxlength="2000" placeholder="e.g.&#10;- Never use em-dashes.&#10;- Reply in 2-3 short bullet points.&#10;- Use a casual, first-person conversational tone.&#10;- Avoid technical jargon unless asked."></textarea>
           <div class="s-counter"><span id="ai-rules-count">0</span> / 2000</div>
           <div class="s-hint-block">
-            These rules tell Ghost <strong>how</strong> to write, not <strong>what</strong> to say. They apply to every mode except coding-problem solves (LeetCode), which stays strict. Stored locally; never sent anywhere except the AI provider when Ghost answers a question.
+            These rules tell Ghost <strong>how</strong> to write, not <strong>what</strong> to say. They apply to all modes except coding problems (LeetCode), which stays strict and optimal.
           </div>
         </div>
 
-        <!-- Q&A -->
+        <!-- TAB 6: Q&A -->
         <div class="s-tab-pane hidden" data-pane="qa">
           <label class="s-label">Salary target <span class="s-hint">used when asked about compensation</span></label>
-          <input id="salary-target" type="text" placeholder="e.g. $150k–$180k base + equity, open to discuss total comp" autocomplete="off" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.14);background:rgba(0,0,0,0.25);color:#fff;font-size:13px;font-family:inherit;outline:none;" />
+          <input id="salary-target" type="text" placeholder="e.g. $160k–$190k base + equity, flexible on total comp" autocomplete="off" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.14);background:rgba(0,0,0,0.25);color:#fff;font-size:13px;font-family:inherit;outline:none;" />
 
-          <label class="s-label" style="margin-top:14px;">Questions to ask the interviewer <span class="s-hint">Ghost will suggest these at the end</span></label>
-          <textarea id="questions-to-ask" rows="6" spellcheck="false" placeholder="e.g.&#10;- What does success look like in the first 90 days?&#10;- How does the team handle technical debt?"></textarea>
+          <label class="s-label" style="margin-top:14px;">Questions to ask the interviewer <span class="s-hint">Ghost suggests these at the end of the interview</span></label>
+          <textarea id="questions-to-ask" rows="6" spellcheck="false" placeholder="e.g.&#10;- What does success look like in the first 90 days?&#10;- How does the team handle architectural technical debt?&#10;- What is the biggest challenge the team is solving this quarter?"></textarea>
+        </div>
+
+        <!-- TAB 7: Android & Phone Calls -->
+        <div class="s-tab-pane hidden" data-pane="android">
+          <div class="whisper-card">
+            <div class="whisper-runtime-row">
+              <span class="s-label">Android CLI &amp; ADB Bridge</span>
+              <span id="android-cli-status" class="whisper-badge">Scanning…</span>
+            </div>
+            <div id="android-cli-info" class="s-note">Checking Android development bridge (ADB / Android CLI)...</div>
+            <div class="whisper-actions" style="margin-top:4px;">
+              <button id="android-refresh-btn" class="s-action">Scan Devices</button>
+              <button id="android-screencap-btn" class="s-action">Test Screen Capture</button>
+            </div>
+          </div>
+
+          <label class="s-label">Connected Android Devices <span class="s-hint">USB debugging or Wireless ADB</span></label>
+          <div id="android-device-list" class="android-device-list">
+            <div class="s-note">No Android devices connected. Plug in your phone via USB with USB Debugging enabled, or pair via Wi-Fi ADB.</div>
+          </div>
+
+          <label class="s-label" style="margin-top:10px;">Phone Link Quick Action</label>
+          <button id="open-phonelink-btn" class="s-action">Open Windows Phone Link</button>
+        </div>
+
+        <!-- TAB 8: General -->
+        <div class="s-tab-pane hidden" data-pane="general">
+          <label class="s-label">Session Persistence &amp; Transcripts</label>
+          <label class="settings-row settings-row-check" style="display:flex;align-items:flex-start;gap:8px;margin-top:6px;cursor:pointer;">
+            <input type="checkbox" id="save-transcripts-toggle" style="margin-top:2px;" />
+            <span style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.4;">Save transcripts to disk after each session (<code>meeting_*.txt</code> in <code>&lt;userData&gt;/transcripts</code>)</span>
+          </label>
+          <p class="settings-hint" style="margin-top:8px;">Unchecked, sessions still leave a structured meeting record in <code>meetings.json</code> for memory injection, but no transcript .txt is written. Audio is never recorded to disk in either mode.</p>
         </div>
       </div>
     </aside>

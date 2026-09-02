@@ -54,6 +54,9 @@ const ghostBridge = {
   dashboardToggle: () => ipcRenderer.invoke('dashboard:toggle'),
   dashboardHide: () => ipcRenderer.invoke('dashboard:hide'),
   dashboardMinimize: () => ipcRenderer.invoke('dashboard:minimize'),
+  dashboardMaximize: () => ipcRenderer.invoke('dashboard:maximize'),
+  dashboardToggleFullscreen: () => ipcRenderer.invoke('dashboard:toggle-fullscreen'),
+  dashboardIsMaximized: () => ipcRenderer.invoke('dashboard:is-maximized'),
   windowResize: (width, height) => ipcRenderer.send('window:resize', { width, height }),
   windowSetCollapsed: (collapsed) => ipcRenderer.send('window:set-collapsed', { collapsed }),
   windowMoveBy: (dx, dy) => ipcRenderer.send('window:move-by', { dx, dy }),
@@ -65,6 +68,7 @@ const ghostBridge = {
       'vad:state', 'applink:consent-request', 'hide:toggle',
       'whisper:download-progress', 'whisper:models-changed',
       'transcripts:changed', 'transcript:cleared', 'cursor:pos',
+      'settings:changed', 'dashboard:maximized-changed',
     ];
     if (!allowed.includes(channel)) return;
     ipcRenderer.on(channel, (_e, data) => cb(data));

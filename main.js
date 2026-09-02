@@ -687,6 +687,8 @@ ipcMain.handle('transcript:clear', () => {
 ipcMain.handle('settings:get', () => store.getSettings());
 ipcMain.handle('settings:set', (_e, patch) => {
   const updated = store.setSettings(patch);
+  send('settings:changed', updated);
+  sendToDashboard('settings:changed', updated);
   if (patch.sttProvider !== undefined || patch.whisperModel !== undefined) {
     sttDisabled = false;
     if (state.capturing) {
@@ -971,6 +973,31 @@ ipcMain.handle('dashboard:minimize', () => {
   if (dashboardWin && !dashboardWin.isDestroyed()) dashboardWin.minimize();
   return { ok: true };
 });
+ipcMain.handle('dashboard:maximize', () => {
+  if (dashboardWin && !dashboardWin.isDestroyed()) {
+    if (dashboardWin.isMaximized()) {
+      dashboardWin.unmaximize();
+    } else {
+      dashboardWin.maximize();
+    }
+    return { ok: true, isMaximized: dashboardWin.isMaximized() };
+  }
+  return { ok: false };
+});
+ipcMain.handle('dashboard:toggle-fullscreen', () => {
+  if (dashboardWin && !dashboardWin.isDestroyed()) {
+    const fs = !dashboardWin.isFullScreen();
+    dashboardWin.setFullScreen(fs);
+    return { ok: true, isFullScreen: fs };
+  }
+  return { ok: false };
+});
+ipcMain.handle('dashboard:is-maximized', () => {
+  if (dashboardWin && !dashboardWin.isDestroyed()) {
+    return { isMaximized: dashboardWin.isMaximized(), isFullScreen: dashboardWin.isFullScreen() };
+  }
+  return { isMaximized: false, isFullScreen: false };
+});
 
 // -------- Permissions IPC --------
 ipcMain.handle('permissions:check', () => getPermissionStatus());
@@ -1071,7 +1098,7 @@ function createDashboardWindow() {
     maximizable: true,
     skipTaskbar: false,
     alwaysOnTop: false,
-    fullscreenable: false,
+    fullscreenable: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -1087,6 +1114,10 @@ function createDashboardWindow() {
       app.quit();
     }
   });
+  dashboardWin.on('maximize', () => sendToDashboard('dashboard:maximized-changed', { isMaximized: true, isFullScreen: dashboardWin ? dashboardWin.isFullScreen() : false }));
+  dashboardWin.on('unmaximize', () => sendToDashboard('dashboard:maximized-changed', { isMaximized: false, isFullScreen: dashboardWin ? dashboardWin.isFullScreen() : false }));
+  dashboardWin.on('enter-full-screen', () => sendToDashboard('dashboard:maximized-changed', { isMaximized: true, isFullScreen: true }));
+  dashboardWin.on('leave-full-screen', () => sendToDashboard('dashboard:maximized-changed', { isMaximized: dashboardWin ? dashboardWin.isMaximized() : false, isFullScreen: false }));
   dashboardWin.webContents.on('did-finish-load', () => dashboardWin.show());
 }
 

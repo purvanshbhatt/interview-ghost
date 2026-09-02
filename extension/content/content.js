@@ -14,6 +14,8 @@
   host.style.top = '24px';
   host.style.right = '24px';
   host.style.zIndex = '2147483647';
+  // Keep overlay dormant/hidden by default until explicitly toggled/opened
+  host.style.display = 'none';
   document.documentElement.appendChild(host);
 
   const shadow = host.attachShadow({ mode: 'open' });
@@ -24,17 +26,15 @@
   styleLink.href = chrome.runtime.getURL('content/overlay.css');
   shadow.appendChild(styleLink);
 
+  const iconUrl = chrome.runtime.getURL('icons/icon-48.png');
+
   // Template Structure
   const template = `
     <div class="ghost-hud-container" id="ghostContainer">
       <!-- Header / Drag Bar -->
       <div class="ghost-header" id="ghostHeader">
         <div class="ghost-brand">
-          <svg class="ghost-logo-icon" viewBox="0 0 128 128" fill="none">
-            <path d="M64 24 C44 24 32 40 32 60 V92 C32 95 35 98 38 96 C42 93 46 93 50 96 C54 99 60 99 64 96 C68 93 74 93 78 96 C82 99 88 99 90 96 C93 94 96 95 96 92 V60 C96 40 84 24 64 24 Z" fill="#06b6d4" />
-            <ellipse cx="50" cy="54" rx="5" ry="6" fill="#0b0f17" />
-            <ellipse cx="78" cy="54" rx="5" ry="6" fill="#0b0f17" />
-          </svg>
+          <img class="ghost-logo-icon" src="${iconUrl}" width="20" height="20" alt="Ghost Logo" style="display:block;object-fit:contain;" />
           <span class="ghost-title">GHOST</span>
           <span class="ghost-status-badge" id="statusBadge">
             <span class="ghost-status-dot"></span>

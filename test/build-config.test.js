@@ -69,7 +69,7 @@ test('mac config never auto-publishes and only claims hardened runtime / notariz
 test('mac config ships the zip target with entitlements files that exist on disk', () => {
   delete require.cache[require.resolve('../electron-builder.cjs')];
   const builder = require('../electron-builder.cjs');
-  assert.deepEqual(builder.mac.target, [{ target: 'zip', arch: ['x64', 'arm64'] }]);
+  assert.ok(builder.mac.target.some(t => t.target === 'zip' && t.arch.includes('x64') && t.arch.includes('arm64')));
   const root = path.join(__dirname, '..');
   assert.ok(fs.existsSync(path.join(root, builder.mac.entitlements)));
   assert.ok(fs.existsSync(path.join(root, builder.mac.entitlementsInherit)));

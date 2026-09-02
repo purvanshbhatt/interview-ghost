@@ -1,15 +1,17 @@
 <div align="center">
 
+<img src="docs/logo.png" width="130" height="130" alt="Ghost Logo" style="border-radius: 28px; box-shadow: 0 0 35px rgba(0,240,255,0.4);" />
+
 # 👻 Ghost
 ### Autonomous Stealth AI Interview & Meeting Copilot
 
 **A multi-surface, translucent AI copilot that sees your screen, listens to meeting audio in real-time, and remains completely invisible to screen shares and proctoring software.**
 
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
-[![Platform: Desktop | Web | Mobile](https://img.shields.io/badge/Platforms-macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20Chrome%20%7C%20iOS%20%7C%20Android-green.svg)](#-multi-surface-architecture)
-[![Electron](https://img.shields.io/badge/Electron-44.x-47848F.svg)](https://www.electronjs.org/)
+[![GitHub Releases](https://img.shields.io/github/v/release/purvanshbhatt/interview-ghost?color=cyan&label=Latest%20Release)](https://github.com/purvanshbhatt/interview-ghost/releases/latest)
+[![Platforms](https://img.shields.io/badge/Platforms-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Chrome%20%7C%20Android%20%7C%20iOS-10b981.svg)](#-instant-run-pre-built-downloads-no-build-needed)
+[![Electron](https://img.shields.io/badge/Electron-34.x-47848F.svg)](https://www.electronjs.org/)
 [![Chrome MV3](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg)](#2-chrome-web-extension-manifest-v3)
-[![Expo / React Native](https://img.shields.io/badge/Mobile-Expo%2054%20%7C%20React%20Native%200.76-61DAFB.svg)](#3-android-application)
 
 <img src="docs/overlay-v2.png" width="720" alt="Ghost V2 frosted-glass overlay — session pill, live AI panel, and composer" />
 
@@ -25,16 +27,18 @@
 
 ## ⚡ Instant Run: Pre-Built Downloads (No Build Needed)
 
-If you just want to run Ghost immediately without compiling from source:
+Direct download links from the [Latest GitHub Release](https://github.com/purvanshbhatt/interview-ghost/releases/latest):
 
-| Platform | Download / Package | How to Run |
-|---|---|---|
-| **🪟 Windows (10/11)** | `Ghost-win-x64.exe` (Installer) or `Ghost-Portable.zip` | Double click the installer, or extract portable and run `ghost.exe` |
-| **🐧 Linux (.deb)** | `Ghost-0.2.2-linux-amd64.deb` | `sudo dpkg -i Ghost-0.2.2-linux-amd64.deb` then run `ghost` |
-| **🐧 Linux (AppImage)** | `Ghost-0.2.2-linux-x86_64.AppImage` | `chmod +x Ghost-0.2.2-linux-x86_64.AppImage`<br>`./Ghost-0.2.2-linux-x86_64.AppImage --appimage-extract-and-run` |
-| **🤖 Android (11+)** | `ghost-mobile-release.apk` | Transfer `.apk` to phone and tap to install, or `adb install -r ghost-mobile-release.apk` |
-| **🌐 Chrome / Edge / Brave** | `extension/` (Manifest V3) | Go to `chrome://extensions` → Enable *Developer Mode* → Click *Load Unpacked* → Select `extension/` folder |
-| **🍎 macOS (Intel / Apple Silicon)** | `Ghost-mac.zip` / `Ghost.dmg` | Unzip / mount and drag `Ghost.app` to `/Applications` |
+| Platform | Format / File | Direct Download | How to Run |
+|---|---|---|---|
+| **🪟 Windows (10/11)** | Installer (`.exe`) | [`Ghost-win-x64.exe`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/Ghost-win-x64.exe) | Double click installer & run |
+| **🪟 Windows (10/11)** | Portable (`.exe`) | [`Ghost-win-portable-x64.exe`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/Ghost-win-portable-x64.exe) | Zero-install: run directly |
+| **🍎 macOS (Universal)** | Disk Image (`.dmg`) | [`Ghost.dmg`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/Ghost.dmg) | Open `.dmg` & drag `Ghost.app` to Applications |
+| **🍎 macOS (Apple Silicon / Intel)** | Archive (`.zip`) | [`Ghost-mac.zip`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/Ghost-mac.zip) | Extract and double-click `Ghost.app` |
+| **🐧 Linux (Debian / Ubuntu)** | Debian Package (`.deb`) | [`Ghost-linux-amd64.deb`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/Ghost-linux-amd64.deb) | `sudo dpkg -i Ghost-linux-amd64.deb` |
+| **🐧 Linux (Universal)** | AppImage (`.AppImage`) | [`Ghost-linux-x86_64.AppImage`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/Ghost-linux-x86_64.AppImage) | `chmod +x Ghost-linux-x86_64.AppImage && ./Ghost-linux-x86_64.AppImage` |
+| **🤖 Android (11+)** | Android Package (`.apk`) | [`ghost-mobile-release.apk`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/ghost-mobile-release.apk) | Install on phone or `adb install -r ghost-mobile-release.apk` |
+| **🌐 Chrome / Edge / Brave** | Manifest V3 Extension | [`extension/`](extension/) | Load unpacked in `chrome://extensions` (stays dormant until toggled with `Ctrl+Shift+G`) |
 
 ---
 

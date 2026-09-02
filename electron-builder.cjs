@@ -39,7 +39,10 @@ module.exports = {
   directories: { buildResources: "build-resources" },
   afterPack: "scripts/after-pack.js",
   mac: {
-    target: [{ target: "zip", arch: ["x64", "arm64"] }],
+    target: [
+      { target: "dmg", arch: ["x64", "arm64"] },
+      { target: "zip", arch: ["x64", "arm64"] }
+    ],
     category: "public.app-category.productivity",
     // With a real cert, let electron-builder discover it and apply the hardened
     // runtime (notarization is refused without it). Without one, identity:null
@@ -62,7 +65,10 @@ module.exports = {
     },
   },
   win: {
-    target: [{ target: "nsis", arch: ["x64"] }],
+    target: [
+      { target: "nsis", arch: ["x64"] },
+      { target: "portable", arch: ["x64"] }
+    ],
     artifactName: "${productName}-win-${arch}.${ext}",
   },
   // A per-user install with a visible directory step: Ghost is a personal overlay,
@@ -72,6 +78,9 @@ module.exports = {
     perMachine: false,
     allowToChangeInstallationDirectory: true,
     shortcutName: "Ghost",
+  },
+  portable: {
+    artifactName: "${productName}-win-portable-${arch}.${ext}",
   },
   linux: {
     target: [

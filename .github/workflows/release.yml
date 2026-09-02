@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*' # Automatically trigger when you push a new version tag (e.g., v0.2.0)
+  workflow_dispatch: # Allow manual release triggering from GitHub Actions UI
 
 permissions:
   contents: write
@@ -74,8 +75,11 @@ jobs:
         with:
           files: |
             dist/*.exe
+            dist/*.dmg
             dist/*.zip
             dist/*.AppImage
             dist/*.deb
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

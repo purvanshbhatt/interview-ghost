@@ -1132,6 +1132,9 @@
     // Q&A tab
     $('#salary-target').value = settings.salaryTarget || '';
     $('#questions-to-ask').value = settings.questionsToAsk || '';
+    // General tab
+    const saveTranscriptsToggle = $('#save-transcripts-toggle');
+    if (saveTranscriptsToggle) saveTranscriptsToggle.checked = settings.saveTranscripts !== false;
   }
 
   // Whoever cue has been told it may answer questions for. Empty is the normal
@@ -1507,6 +1510,9 @@
     // Q&A
     settings.salaryTarget = $('#salary-target').value.trim();
     settings.questionsToAsk = $('#questions-to-ask').value.trim();
+    // General
+    const saveTranscriptsToggle = $('#save-transcripts-toggle');
+    if (saveTranscriptsToggle) settings.saveTranscripts = saveTranscriptsToggle.checked;
     try {
       settings = await cue.settingsSet(settings);
       $('#s-status').textContent = statusText();
@@ -1588,9 +1594,6 @@
     const settingsScrim = el.closest('#settings-scrim');
     if (settingsScrim && settingsScrim.classList.contains('hidden')) return false;
 
-    const onboardScrim = el.closest('#onboard-scrim');
-    if (onboardScrim && onboardScrim.classList.contains('hidden')) return false;
-
     const consentScrim = el.closest('#consent-scrim');
     if (consentScrim && consentScrim.classList.contains('hidden')) return false;
 
@@ -1599,7 +1602,7 @@
       return false;
     }
 
-    return !!el.closest('#toolbar, #panel-wrap, #transcript-sidebar, #settings-scrim, #onboard-scrim, #consent-scrim, #resize-grip');
+    return !!el.closest('#toolbar, #panel-wrap, #transcript-sidebar, #settings-scrim, #consent-scrim, #resize-grip');
   }
   document.addEventListener('mousemove', (e) => {
     lastCursor = { x: e.clientX, y: e.clientY };
@@ -1638,11 +1641,6 @@
   }
 
   // ---- assistant access request ------------------------------------------
-  // Shown here rather than as a native dialog because cue hides its dock icon:
-  // an OS panel from an accessory app never comes forward and cannot be
-  // clicked. Note the scrim is registered in the click-through selector above
-  // and in styles.css — without both, this window stays transparent to the
-  // mouse and the buttons do nothing.
   const consentScrim = $('#consent-scrim');
   let pendingConsentId = null;
 
@@ -1659,99 +1657,36 @@
     $('#cs-body').textContent = request.detail;
     $('#cs-allow').textContent = request.allowLabel;
     consentScrim.classList.remove('hidden');
-    // Do not wait for a mousemove to turn the mouse back on: the pointer may
-    // already be still, and the sheet would be unclickable until it moved.
     setIgnore(false);
     $('#cs-deny').focus();
   });
 
   $('#cs-allow').addEventListener('click', () => answerConsent(true));
   $('#cs-deny').addEventListener('click', () => answerConsent(false));
-  // Anything other than a deliberate Allow is a no, including Escape and
-  // clicking away.
   consentScrim.addEventListener('click', (e) => { if (e.target === consentScrim) answerConsent(false); });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && pendingConsentId) { e.preventDefault(); answerConsent(false); }
   });
 
-  // ---- onboarding / first-run tutorial -----------------------------------
-  const obScrim = $('#onboard-scrim');
-  const permissionHelp = isWindows
-    ? 'cue needs permission to see and hear. Open Windows Privacy & security settings, allow <strong>Microphone</strong> and <strong>Screen recording</strong> for cue, then come back here.'
-    : isLinux
-      ? 'On Linux there is no permission prompt to accept — just make sure your microphone is not muted (check <strong>pavucontrol</strong> or GNOME Settings → Privacy → Microphone) and that a screen is available to capture. Wayland users: X11 or XWayland gives the most reliable capture.'
-      : 'cue needs two macOS permissions. Click each button, turn <strong>cue</strong> ON in the window that opens, then come back here.';
-  const permissionButtons = isWindows
-    ? [
-        { label: 'Open Microphone settings', action: () => cue.openPane('ms-settings:privacy-microphone') },
-        { label: 'Open Screen recording settings', action: () => cue.openPane('ms-settings:privacy-screenrecorder') }
-      ]
-    : isLinux
-      ? []
-      : [
-          { label: 'Open Microphone settings', action: () => cue.openPane('x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone') },
-          { label: 'Open Screen Recording settings', action: () => cue.openPane('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture') }
-        ];
-  const assistShortcut = usesCtrl ? '<span class="kbd">Ctrl</span> <span class="kbd">↵</span>' : '<span class="kbd">⌘</span> <span class="kbd">↵</span>';
-  const solveShortcut = usesCtrl ? '<span class="kbd">Ctrl</span> <span class="kbd">H</span>' : '<span class="kbd">⌘</span> <span class="kbd">H</span>';
-  const quitShortcut = usesCtrl ? '<span class="kbd">Ctrl</span><span class="kbd">⇧</span><span class="kbd">X</span>' : '<span class="kbd">⌘</span><span class="kbd">⇧</span><span class="kbd">X</span>';
-  const OB_STEPS = [
-    {
-      icon: '👋',
-      title: 'Welcome to Ghost',
-      body: 'Ghost is a private AI copilot that floats over your screen. It can <strong>see your screen</strong>, <strong>hear your meetings</strong>, and help you answer questions or solve coding problems — while staying hidden from most screen shares.<br><br>This quick guide gets you running in about a minute.'
-    },
-    {
-      icon: '🔐',
-      title: 'Allow Ghost to see & hear',
-      body: permissionHelp + '<ul><li><strong>Microphone</strong> — to hear you</li><li><strong>Screen recording</strong> — to see your screen and hear meeting audio</li></ul>',
-      buttons: permissionButtons
-    },
-    {
-      icon: '🔑',
-      title: 'Connect an AI provider',
-      body: 'Ghost uses <strong>your own</strong> API key — pick <span class="hl">Google Gemini</span>, <span class="hl">OpenAI</span>, <span class="hl">Anthropic Claude</span>, or <span class="hl">Groq</span>. Get a key from your provider, then paste it into Ghost\'s Settings.<br><br><strong>Tip:</strong> For the <em>best</em> real-time listening, use <span class="hl">Gemini Transcribe</span> or add a <span class="hl">Deepgram</span> key (lowest latency streaming transcription).',
-      buttons: [{ label: 'Open Ghost Settings', action: () => { finishOnboard(); openSettings(); } }]
-    },
-    {
-      icon: '🫥',
-      title: 'Stay hidden in Zoom',
-      body: 'Ghost is hidden from most screen shares automatically (Google Meet, Teams, QuickTime — nothing to do). <strong>Zoom needs one setting:</strong><br><br>Zoom → <span class="hl">Settings</span> → <span class="hl">Share Screen</span> → <span class="hl">Advanced</span> → <strong>Screen capture mode</strong> → choose <strong>“Advanced capture with window filtering.”</strong><br><br>Avoid “<strong>without</strong> window filtering” — that mode reveals Ghost.'
-    },
-    {
-      icon: '✨',
-      title: 'You’re all set',
-      body: 'How to use Ghost:<ul><li>' + assistShortcut + ' — <strong>Assist</strong> with whatever\'s on screen or being said</li><li>' + solveShortcut + ' — solve a coding problem on screen</li><li>Click <strong>▢</strong> in the top bar to start listening to a meeting</li><li>Type a question and press <span class="kbd">↵</span></li></ul>Reopen this guide anytime by clicking the <strong>Ghost logo</strong>. Quit with ' + quitShortcut + '.'
+  // ---- Ghost Logo click -> Open/Focus Dashboard Home Page -----------------
+  $('#logo-btn').addEventListener('click', () => {
+    cue.dashboardToggle();
+  });
+
+  // Live-sync settings if edited in dashboard or elsewhere
+  cue.on('settings:changed', (updated) => {
+    if (updated) {
+      settings = updated;
+      fillSettings();
+      updatePrepStatus();
+      updateSmartTooltip();
+      smartBtn.classList.toggle('on', !!settings.smart);
     }
-  ];
-  let obIndex = 0;
-  function renderOnboard() {
-    const step = OB_STEPS[obIndex];
-    $('#ob-icon').textContent = step.icon;
-    $('#ob-title').textContent = step.title;
-    $('#ob-body').innerHTML = step.body;
-    const btns = $('#ob-buttons'); btns.innerHTML = '';
-    (step.buttons || []).forEach((b) => { const el = document.createElement('button'); el.textContent = b.label; el.addEventListener('click', b.action); btns.appendChild(el); });
-    const dots = $('#ob-dots'); dots.innerHTML = '';
-    OB_STEPS.forEach((_, i) => { const d = document.createElement('span'); if (i === obIndex) d.className = 'on'; dots.appendChild(d); });
-    $('#ob-back').style.visibility = obIndex === 0 ? 'hidden' : 'visible';
-    $('#ob-next').textContent = obIndex === OB_STEPS.length - 1 ? 'Done' : 'Next';
-    $('#ob-skip').style.visibility = obIndex === OB_STEPS.length - 1 ? 'hidden' : 'visible';
-  }
-  function showOnboard() { obIndex = 0; renderOnboard(); obScrim.classList.remove('hidden'); setIgnore(false); }
-  async function finishOnboard() {
-    obScrim.classList.add('hidden');
-    if (settings && !settings.onboarded) { settings.onboarded = true; await cue.settingsSet({ onboarded: true }); }
-  }
-  $('#ob-next').addEventListener('click', () => { if (obIndex === OB_STEPS.length - 1) finishOnboard(); else { obIndex++; renderOnboard(); } });
-  $('#ob-back').addEventListener('click', () => { if (obIndex > 0) { obIndex--; renderOnboard(); } });
-  $('#ob-skip').addEventListener('click', finishOnboard);
-  $('#logo-btn').addEventListener('click', showOnboard);
+  });
 
   // ---- boot --------------------------------------------------------------
   (async function boot() {
     settings = await cue.settingsGet();
-    const platformInfo = await cue.platformInfo();
 
     // R4: shortcut hints
     const sayHintEl = document.getElementById('say-shortcut-hint');
@@ -1763,24 +1698,13 @@
     updatePrepStatus();
     // R6: smart tooltip
     updateSmartTooltip();
-    // Fix 3: Adjust permission buttons based on actual Windows version.
-    // ms-settings:privacy-screenrecorder only exists on Windows 11.
-    // On Windows 10, screen capture needs no permission — so replace the button
-    // with a more helpful note instead of an invalid settings link.
-    if (isWindows && platformInfo.winBuild > 0 && platformInfo.winBuild < 22000) {
-      // Windows 10: update the onboarding screen recording button to be more helpful
-      const ob = OB_STEPS[1];
-      ob.buttons = ob.buttons.filter((b) => !b.label.toLowerCase().includes('screen'));
-      ob.body = 'cue needs microphone permission to hear you. Click the button below to open Windows microphone settings and allow cue.<br><br><strong>Screen capture works automatically on Windows 10</strong> — no additional permission needed.<ul><li><strong>Microphone</strong> — to hear you</li><li><strong>Screen recording</strong> — works automatically on Windows 10</li></ul>';
-    }
 
     smartBtn.classList.toggle('on', !!settings.smart);
     showExample();
     syncPlaceholder();
-    updateHistoryBadge(); // FIX #3: Initialize badge on boot
-    updateSendButtonState(); // Initialize send button state
+    updateHistoryBadge();
+    updateSendButtonState();
 
-    // Fix placeholder shortcut hint to match platform
     if (usesCtrl) {
       placeholder.innerHTML = 'Ask about your screen or conversation, or <span class="keycap">Ctrl</span><span class="keycap">⏎</span> for Assist';
     }
@@ -1788,6 +1712,5 @@
     const st = await cue.captureState();
     $('#live-dot').classList.toggle('off', !st.active);
     $('#stop-btn').classList.toggle('active', st.active);
-    if (!settings.onboarded) showOnboard();
   })();
 })();

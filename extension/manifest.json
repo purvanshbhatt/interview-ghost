@@ -44,6 +44,15 @@
     "page": "options/options.html",
     "open_in_tab": true
   },
+  "commands": {
+    "toggle-overlay": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+G",
+        "mac": "Command+Shift+G"
+      },
+      "description": "Toggle Ghost floating overlay"
+    }
+  },
   "content_scripts": [
     {
       "matches": [

@@ -358,3 +358,19 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage)
     return true; // Keep message channel open for async response
   });
 }
+
+// Global hotkey trigger to toggle in-meeting floating overlay
+if (typeof chrome !== 'undefined' && chrome.commands && chrome.commands.onCommand) {
+  chrome.commands.onCommand.addListener(async (command) => {
+    if (command === 'toggle-overlay') {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab && tab.id) {
+        try {
+          await chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_OVERLAY' });
+        } catch (err) {
+          console.warn('[Ghost SW] Could not toggle overlay on tab:', err);
+        }
+      }
+    }
+  });
+}

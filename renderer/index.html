@@ -14,7 +14,7 @@
         <span class="drag-dots" aria-hidden="true"></span>
         <span class="drag-label">Drag</span>
       </div>
-      <button class="tb-logo" id="logo-btn" title="Ghost"></button>
+      <button class="tb-logo" id="logo-btn" title="Open Ghost Dashboard &amp; Setup"></button>
       <div class="tb-session">
         <span class="tb-session-eyebrow">Active Session</span>
         <span class="tb-session-title">Ghost Copilot</span>
@@ -112,12 +112,13 @@
       <!-- Tab bar -->
       <div class="s-tabs">
         <button class="s-tab on" data-tab="keys">🔑 Keys</button>
-        <button class="s-tab" data-tab="transcription">Audio</button>
+        <button class="s-tab" data-tab="transcription">🎙 Audio</button>
         <button class="s-tab" data-tab="profile">📄 Profile</button>
-        <button class="s-tab" data-tab="prep">🎯 Interview Prep</button>
+        <button class="s-tab" data-tab="prep">🎯 Prep</button>
         <button class="s-tab" data-tab="style">✨ Style</button>
         <button class="s-tab" data-tab="qa">💬 Q&amp;A</button>
         <button class="s-tab" data-tab="android">📱 Android</button>
+        <button class="s-tab" data-tab="general">⚙️ General</button>
       </div>
 
       <!-- Tab: Keys -->
@@ -317,25 +318,16 @@
              </div>
            </div>
          </div>
+       <!-- Tab: General -->
+       <div class="s-body s-tab-pane hidden" data-pane="general">
+         <label class="s-label">Session Persistence</label>
+         <label class="settings-row settings-row-check" style="display:flex;align-items:flex-start;gap:8px;margin-top:6px;cursor:pointer;">
+           <input type="checkbox" id="save-transcripts-toggle" style="margin-top:2px;" />
+           <span style="font-size:12px;color:rgba(255,255,255,0.85);line-height:1.4;">Save transcripts to disk after each session (<code>meeting_*.txt</code> in <code>&lt;userData&gt;/transcripts</code>)</span>
+         </label>
+         <div class="s-note" style="margin-top:8px;">Unchecked, sessions still leave a structured meeting record in <code>meetings.json</code> for memory injection, but no transcript .txt is written. Audio is never recorded to disk in either mode.</div>
        </div>
 
-    </div>
-  </div>
-
-  <!-- First-run tutorial / walkthrough -->
-  <div id="onboard-scrim" class="hidden">
-    <div id="onboard" class="glass">
-      <div class="ob-dots" id="ob-dots"></div>
-      <div class="ob-icon" id="ob-icon"></div>
-      <div class="ob-title" id="ob-title"></div>
-      <div class="ob-body" id="ob-body"></div>
-      <div class="ob-buttons" id="ob-buttons"></div>
-      <div class="ob-actions">
-        <button id="ob-skip" class="ob-ghost">Skip</button>
-        <div class="spacer"></div>
-        <button id="ob-back" class="ob-ghost">Back</button>
-        <button id="ob-next" class="ob-primary">Next</button>
-      </div>
     </div>
   </div>
 

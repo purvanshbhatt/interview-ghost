@@ -131,15 +131,12 @@ html, body {
 #toolbar button { border: none; background: transparent; color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background 140ms ease, transform 140ms ease; }
 .tb-logo {
   width: 34px; height: 34px; border-radius: 12px;
-  background: linear-gradient(150deg, oklch(68% 0.15 262), oklch(52% 0.17 278)) !important;
-  box-shadow: 0 4px 14px var(--accent-glow), inset 0 1px 0 oklch(100% 0 0 / 0.35);
+  background: #0d121f url('assets/logo.png') center/70% no-repeat !important;
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  box-shadow: 0 4px 14px rgba(0, 240, 255, 0.35);
   position: relative;
 }
-.tb-logo::after {
-  content: ''; position: absolute; inset: 0; border-radius: 12px;
-  background: radial-gradient(120% 90% at 20% 15%, oklch(100% 0 0 / 0.38), transparent 55%);
-}
-.tb-logo:hover { filter: brightness(1.10); }
+.tb-logo:hover { filter: brightness(1.15); box-shadow: 0 4px 18px rgba(0, 240, 255, 0.55); }
 .tb-hide { gap: 6px; padding: 7px 14px 7px 12px; border-radius: var(--r-pill); font-size: 13px; font-weight: 600; color: var(--tx-2); border: 1px solid var(--glass-line); background: oklch(96% 0.02 260 / 0.06); }
 .tb-hide:hover { background: oklch(96% 0.02 260 / 0.12); }
 .tb-hide .chev { width: 14px; height: 14px; display: inline-flex; color: var(--tx-2); }

@@ -13,6 +13,12 @@
 [![Electron](https://img.shields.io/badge/Electron-34.x-47848F.svg)](https://www.electronjs.org/)
 [![Chrome MV3](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4.svg)](#2-chrome-web-extension-manifest-v3)
 
+<br />
+
+<a href="https://www.buymeacoffee.com/purvansh95s"><img src="https://img.buymeacoffee.com/button-api/?text=Support &emoji=🖤&slug=purvansh95s&button_colour=2b8265&font_colour=ffffff&font_family=Lato&outline_colour=ffffff&coffee_colour=FFDD00" /></a>
+
+<br />
+
 <img src="docs/overlay-v2.png" width="720" alt="Ghost V2 frosted-glass overlay — session pill, live AI panel, and composer" />
 
 </div>

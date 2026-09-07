@@ -38,11 +38,31 @@ export async function saveSettings(settings: AppSettings): Promise<boolean> {
   }
 }
 
+import * as FileSystem from 'expo-file-system';
+
+const SESSIONS_FILE = `${FileSystem.documentDirectory || ''}cue_sessions_v1.json`;
+
 export async function loadSessions(): Promise<Session[]> {
   try {
+    if (FileSystem.documentDirectory) {
+      const info = await FileSystem.getInfoAsync(SESSIONS_FILE);
+      if (info.exists) {
+        const raw = await FileSystem.readAsStringAsync(SESSIONS_FILE);
+        return JSON.parse(raw);
+      }
+    }
+
+    // Migration fallback from SecureStore
     const raw = await SecureStore.getItemAsync(SESSIONS_KEY);
     if (!raw) return [];
-    return JSON.parse(raw);
+    const sessions = JSON.parse(raw);
+    if (FileSystem.documentDirectory) {
+      await FileSystem.writeAsStringAsync(SESSIONS_FILE, JSON.stringify(sessions));
+      try {
+        await SecureStore.deleteItemAsync(SESSIONS_KEY);
+      } catch {}
+    }
+    return sessions;
   } catch {
     return [];
   }
@@ -57,8 +77,12 @@ export async function saveSession(session: Session): Promise<boolean> {
     } else {
       sessions.unshift(session);
     }
-    await SecureStore.setItemAsync(SESSIONS_KEY, JSON.stringify(sessions.slice(0, 50)));
-    return true;
+    const sliced = sessions.slice(0, 50);
+    if (FileSystem.documentDirectory) {
+      await FileSystem.writeAsStringAsync(SESSIONS_FILE, JSON.stringify(sliced));
+      return true;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -68,8 +92,11 @@ export async function deleteSession(id: string): Promise<boolean> {
   try {
     const sessions = await loadSessions();
     const filtered = sessions.filter((s) => s.id !== id);
-    await SecureStore.setItemAsync(SESSIONS_KEY, JSON.stringify(filtered));
-    return true;
+    if (FileSystem.documentDirectory) {
+      await FileSystem.writeAsStringAsync(SESSIONS_FILE, JSON.stringify(filtered));
+      return true;
+    }
+    return false;
   } catch {
     return false;
   }

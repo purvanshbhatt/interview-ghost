@@ -64,25 +64,55 @@ export const SessionScreen: React.FC<SessionScreenProps> = ({ mode: initialMode,
   };
 
   useEffect(() => {
-    startListening();
+    let mounted = true;
+    const init = async () => {
+      try {
+        const ok = await audioCaptureRef.current.startSegmented({
+          onSegment: (uri) => {
+            if (mounted) transcribeSegment(uri);
+          },
+          onError: (err) => {
+            if (mounted) Alert.alert('Audio Error', err.message);
+          },
+        });
+        if (mounted) setIsListening(ok);
+      } catch (err: any) {
+        if (mounted) {
+          setIsListening(false);
+          setSttError(err.message || 'Audio error');
+        }
+      }
+    };
+    init();
+
     return () => {
-      audioCaptureRef.current.stop();
+      mounted = false;
+      audioCaptureRef.current.stop().catch(() => {});
     };
   }, []);
 
   const startListening = async () => {
-    const ok = await audioCaptureRef.current.startSegmented({
-      onSegment: transcribeSegment,
-      onError: (err) => Alert.alert('Audio Error', err.message),
-    });
-    setIsListening(ok);
+    try {
+      const ok = await audioCaptureRef.current.startSegmented({
+        onSegment: transcribeSegment,
+        onError: (err) => Alert.alert('Audio Error', err.message),
+      });
+      setIsListening(ok);
+    } catch (err: any) {
+      setIsListening(false);
+      setSttError(err.message || 'Audio error');
+    }
   };
 
   const toggleListening = async () => {
     if (isListening) {
-      const trailingUri = await audioCaptureRef.current.stop();
-      setIsListening(false);
-      if (trailingUri) await transcribeSegment(trailingUri);
+      try {
+        const trailingUri = await audioCaptureRef.current.stop();
+        setIsListening(false);
+        if (trailingUri) await transcribeSegment(trailingUri);
+      } catch {
+        setIsListening(false);
+      }
     } else {
       setSttError(null);
       await startListening();
@@ -115,7 +145,9 @@ export const SessionScreen: React.FC<SessionScreenProps> = ({ mode: initialMode,
   };
 
   const handleEnd = async () => {
-    await audioCaptureRef.current.stop();
+    try {
+      await audioCaptureRef.current.stop();
+    } catch {}
     const session: Session = {
       id: sessionIdRef.current,
       title: `${currentMode} session`,
@@ -125,7 +157,9 @@ export const SessionScreen: React.FC<SessionScreenProps> = ({ mode: initialMode,
       turns: turnsRef.current,
       summary: activeAnswer || 'Session completed.',
     };
-    await saveSession(session);
+    try {
+      await saveSession(session);
+    } catch {}
     onEndSession();
   };
 

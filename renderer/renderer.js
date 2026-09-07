@@ -1702,7 +1702,6 @@
     smartBtn.classList.toggle('on', !!settings.smart);
     showExample();
     syncPlaceholder();
-    updateHistoryBadge();
     updateSendButtonState();
 
     if (usesCtrl) {

@@ -27,7 +27,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0F1117"
       },
-      "package": "com.cue.interviewhelper",
+      "package": "com.ghost.interviewhelper",
       "permissions": [
         "RECORD_AUDIO",
         "SYSTEM_ALERT_WINDOW",

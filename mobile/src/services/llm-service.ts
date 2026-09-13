@@ -94,10 +94,18 @@ export async function streamLLMResponse(options: StreamLLMOptions): Promise<void
   const context = buildInterviewContext(settings, mode, turns);
   const systemPrompt = buildSystemPrompt(mode, context, settings.aiRules);
   const transcriptText = formatTranscript(turns, 16);
+  const latestThem = [...turns].reverse().find(t => t.channel === 'them' && t.text && t.text.trim())?.text.trim();
 
-  const promptContent = userQuery
-    ? 'Recent conversation:\n' + (transcriptText || '(none)') + '\n\nCandidate Request: ' + userQuery
-    : 'Recent conversation:\n' + (transcriptText || '(none)') + '\n\nProvide the immediate spoken response.';
+  let targetPrompt = '';
+  if (userQuery && userQuery.trim()) {
+    targetPrompt = `🎯 TARGET QUESTION / REQUEST:\n"${userQuery.trim()}"\n\nProvide the immediate response the candidate should say right now.`;
+  } else if (latestThem) {
+    targetPrompt = `🎯 LATEST INTERVIEWER QUESTION TO ANSWER:\n"${latestThem}"\n\nCRITICAL: Answer this latest question directly. Do NOT repeat previous answers or address earlier questions that are already answered. Deliver the exact words to say out loud right now.`;
+  } else {
+    targetPrompt = 'Provide the immediate spoken response based on the current interview state.';
+  }
+
+  const promptContent = (transcriptText ? 'Recent conversation:\n' + transcriptText + '\n\n' : '') + targetPrompt;
 
   const provider = settings.provider || 'openai';
   const apiKey = settings.apiKeys?.[provider];

@@ -167,7 +167,7 @@
   function runMode(mode, text) {
     if (busy) return;
     setBusy(true);
-    cue.ask({ mode, text: text || '' });
+    cue.ask({ mode, text: text || '', question: text || '' });
   }
 
   document.querySelectorAll('.act').forEach((btn) => {

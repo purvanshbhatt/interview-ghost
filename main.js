@@ -493,6 +493,8 @@ function clearStreamInactivityTimer() {
   streamInactivityTimer = null;
 }
 
+let lastAssistantAnswer = '';
+
 async function runFeature(mode, customQuestion = '') {
   if (state.busy) {
     console.log('[llm] busy — ignoring request for mode:', mode);
@@ -524,12 +526,15 @@ async function runFeature(mode, customQuestion = '') {
   }
 
   const now = Date.now();
-  const recentTurns = transcript.filter(t => (now - t.ts) < TRANSCRIPT_WINDOW_MS);
+  // Keep turns from the last 3 minutes (180s), or fallback to the latest 14 captured turns so questions aren't lost to brief pauses
+  let recentTurns = transcript.filter(t => (now - t.ts) < 180 * 1000);
+  if (recentTurns.length === 0 && transcript.length > 0) {
+    recentTurns = transcript.slice(-14);
+  }
 
   let interviewCtx = null;
   if (mode !== 'leetcode') {
-    const category = detectCategory(recentTurns);
-    interviewCtx = buildInterviewContext(settings, category);
+    interviewCtx = buildInterviewContext(settings, mode, recentTurns);
   }
 
   let modeContext = null;
@@ -558,7 +563,11 @@ async function runFeature(mode, customQuestion = '') {
   if (typeof modeDef.buildUserMessage === 'function') {
     turns = modeDef.buildUserMessage(recentTurns, customQuestion, screenshot);
   } else if (typeof modeDef.build === 'function') {
-    const userText = modeDef.build({ transcript: recentTurns, userText: customQuestion });
+    const userText = modeDef.build({
+      transcript: recentTurns,
+      userText: customQuestion,
+      lastAnswer: lastAssistantAnswer
+    });
     turns = [{ role: 'user', text: userText }];
   }
 
@@ -579,7 +588,9 @@ async function runFeature(mode, customQuestion = '') {
     clearStreamInactivityTimer();
     activeStreamAbort = null;
     state.busy = false;
-    send('llm:done', { text: response || fullResponse });
+    const finalAnswer = response || fullResponse;
+    lastAssistantAnswer = finalAnswer;
+    send('llm:done', { text: finalAnswer });
   } catch (err) {
     clearStreamInactivityTimer();
     activeStreamAbort = null;
@@ -592,7 +603,7 @@ async function runFeature(mode, customQuestion = '') {
 // -------- IPC channels --------
 ipcMain.on('ask', (_e, payload) => {
   const mode = (payload && payload.mode) || 'say';
-  const question = (payload && payload.question) || '';
+  const question = (payload && (payload.question || payload.text)) || '';
   runFeature(mode, question);
 });
 
@@ -680,6 +691,7 @@ ipcMain.on('window:move-by', (_e, { dx, dy }) => {
 
 ipcMain.handle('transcript:clear', () => {
   transcript.length = 0;
+  lastAssistantAnswer = '';
   send('transcript:cleared', {});
   return true;
 });

@@ -10,6 +10,16 @@ function formatTranscript(turns, limit) {
   return recent.map((t) => (t.channel === 'them' ? 'Them: ' : 'You: ') + t.text).join('\n');
 }
 
+function getLatestThemTurn(turns) {
+  if (!turns || !turns.length) return null;
+  for (let i = turns.length - 1; i >= 0; i--) {
+    if (turns[i].channel === 'them' && turns[i].text && turns[i].text.trim()) {
+      return turns[i].text.trim();
+    }
+  }
+  return null;
+}
+
 function buildSystem(base, contextBlock) {
   if (!contextBlock) return base;
   return contextBlock + '\n\n' + base;
@@ -47,13 +57,26 @@ const MODES = {
         '• TECHNICAL/CONCEPTUAL: Explain clearly with examples. For LeetCode: short approach + solution + complexity.\n' +
         '• COMPENSATION ("salary expectations"): Use their stated target, give a confident range.\n' +
         '• "Any questions for us?": Offer 2–3 of their prepared questions.\n\n' +
-        'Write in first person as if the candidate is speaking. No preamble, no "Here\'s what you could say". Just the answer.',
+        'Write in first person as if the candidate is speaking. No preamble, no "Here\'s what you could say". Just the answer.\n\n' +
+        'CRITICAL: Always answer the MOST RECENT question asked. Never repeat answers to previous questions from earlier in the conversation.',
         contextBlock
       ), aiRules, 'assist');
     },
     build(ctx) {
       const t = formatTranscript(ctx.transcript, 14);
-      return 'Recent conversation:\n' + (t || '(none)') + '\n\nRespond with exactly what I should say right now.';
+      const latestThem = getLatestThemTurn(ctx.transcript);
+      const customQ = ctx.userText && ctx.userText.trim();
+
+      let target = '';
+      if (customQ) {
+        target = `🎯 TARGET QUESTION / TASK:\n"${customQ}"\n\nRespond with exactly what I should say right now.`;
+      } else if (latestThem) {
+        target = `🎯 LATEST INTERVIEWER QUESTION TO ANSWER:\n"${latestThem}"\n\nCRITICAL: Deliver the exact words the candidate should say right now answering this newest question ("${latestThem}"). Do NOT repeat answers to previous questions.`;
+      } else {
+        target = 'Respond with exactly what I should say right now.';
+      }
+
+      return (t ? 'Recent conversation:\n' + t + '\n\n' : '') + target;
     }
   },
 
@@ -79,14 +102,26 @@ const MODES = {
         'No quotes, no preamble. Write the actual words to say. 2–5 sentences.\n\n' +
         'CRITICAL: Never repeat or restate the interviewer\'s question back at them. ' +
         'Do not start with "The interviewer asked..." or echo their words. ' +
-        'Jump straight into the answer in the candidate\'s voice.',
+        'Jump straight into the answer in the candidate\'s voice.\n' +
+        'CRITICAL: Always answer the MOST RECENT interviewer question. Never repeat answers to earlier questions that have already been answered.',
         contextBlock
       ), aiRules, 'say');
     },
     build(ctx) {
       const t = formatTranscript(ctx.transcript, 16);
-      return 'Interview conversation so far:\n' + (t || '(listening not started yet)') +
-        '\n\nWhat should I say next?';
+      const latestThem = getLatestThemTurn(ctx.transcript);
+      const customQ = ctx.userText && ctx.userText.trim();
+
+      let target = '';
+      if (customQ) {
+        target = `🎯 TARGET QUESTION / TASK:\n"${customQ}"\n\nWhat should I say next?`;
+      } else if (latestThem) {
+        target = `🎯 LATEST INTERVIEWER QUESTION TO ANSWER:\n"${latestThem}"\n\nCRITICAL: Draft the immediate reply specifically answering the latest question above ("${latestThem}"). Do NOT repeat answers or re-address previous topics. What should I say next?`;
+      } else {
+        target = 'What should I say next?';
+      }
+
+      return (t ? 'Interview conversation so far:\n' + t + '\n\n' : '') + target;
     }
   },
 
@@ -149,7 +184,9 @@ const MODES = {
     },
     build(ctx) {
       const t = formatTranscript(ctx.transcript, 12);
-      return (t ? 'Recent conversation:\n' + t + '\n\n' : '') + 'Question: ' + ctx.userText;
+      const latestThem = getLatestThemTurn(ctx.transcript);
+      const q = (ctx.userText && ctx.userText.trim()) || latestThem || 'Provide assistance for the current interview topic.';
+      return (t ? 'Recent conversation:\n' + t + '\n\n' : '') + 'Question: ' + q;
     }
   },
 

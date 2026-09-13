@@ -76,3 +76,49 @@ test('leetcode mode never applies AI rules (coding answers stay strict)', () => 
   assert.ok(!withRules.includes(RULES), 'leetcode must not leak user rules into the prompt');
   assert.match(withRules, /competitive programmer/);
 });
+
+// ── Latest question isolation & anti-repetition tests ───────────────────────
+test('assist mode spotlights the latest interviewer question when multiple questions are present', () => {
+  const turns = [
+    { channel: 'them', text: 'Tell me about yourself.' },
+    { channel: 'you', text: 'I am a full stack engineer.' },
+    { channel: 'them', text: 'How do you optimize slow database queries?' }
+  ];
+  const built = MODES.assist.build({ transcript: turns, userText: '' });
+  assert.ok(built.includes('🎯 LATEST INTERVIEWER QUESTION TO ANSWER:'));
+  assert.ok(built.includes('How do you optimize slow database queries?'));
+  assert.match(built, /Do NOT repeat answers to previous questions/i);
+});
+
+test('say mode targets the most recent interviewer turn and forbids repetition', () => {
+  const turns = [
+    { channel: 'them', text: 'What is your biggest weakness?' },
+    { channel: 'you', text: 'I sometimes get into the weeds.' },
+    { channel: 'them', text: 'How do you handle team conflict?' }
+  ];
+  const built = MODES.say.build({ transcript: turns, userText: '' });
+  assert.ok(built.includes('🎯 LATEST INTERVIEWER QUESTION TO ANSWER:'));
+  assert.ok(built.includes('How do you handle team conflict?'));
+  assert.match(built, /Do NOT repeat answers/i);
+});
+
+test('ask mode falls back to latest interviewer turn when userText is empty', () => {
+  const turns = [
+    { channel: 'them', text: 'Explain the difference between TCP and UDP.' }
+  ];
+  const built = MODES.ask.build({ transcript: turns, userText: '' });
+  assert.ok(built.includes('Explain the difference between TCP and UDP.'));
+});
+
+test('assist and say prioritize userText when custom query is provided', () => {
+  const turns = [
+    { channel: 'them', text: 'Tell me about your background.' }
+  ];
+  const assistBuilt = MODES.assist.build({ transcript: turns, userText: 'Focus on my Python microservices experience.' });
+  assert.ok(assistBuilt.includes('🎯 TARGET QUESTION / TASK:'));
+  assert.ok(assistBuilt.includes('Focus on my Python microservices experience.'));
+
+  const sayBuilt = MODES.say.build({ transcript: turns, userText: 'Explain it simply without jargon.' });
+  assert.ok(sayBuilt.includes('🎯 TARGET QUESTION / TASK:'));
+  assert.ok(sayBuilt.includes('Explain it simply without jargon.'));
+});

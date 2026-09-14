@@ -65,7 +65,7 @@ jobs:
           # Ship local whisper.cpp transcription inside the Linux AppImages/debs.
           # The runtime manifest pins linux-x64/linux-arm64 prebuilt archives,
           # so no cmake toolchain is needed on the runner.
-          CUE_BUNDLE_WHISPER: '1'
+          GHOST_BUNDLE_WHISPER: '1'
 
       - name: Upload to GitHub Release
         # Skipped on macOS until signing is configured, so an ad-hoc build can

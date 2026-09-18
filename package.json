@@ -1,6 +1,6 @@
 {
   "name": "ghost",
-  "version": "0.2.2",
+  "version": "0.2.4",
   "description": "Open-source cross-platform invisible AI overlay — three separate inputs (screen, mic, system audio) into an LLM. A Ghost stealth copilot for meetings and coding problems.",
   "license": "GPL-3.0-or-later",
   "author": "ghost",

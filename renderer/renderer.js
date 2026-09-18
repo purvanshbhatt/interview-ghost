@@ -174,6 +174,16 @@
     btn.addEventListener('click', () => runMode(btn.dataset.mode, ''));
   });
 
+  const composerActions = document.querySelector('.composer-actions');
+  if (composerActions) {
+    composerActions.addEventListener('wheel', (e) => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        e.preventDefault();
+        composerActions.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
+  }
+
   const input = $('#input');
   const placeholder = $('#placeholder');
   const composer = $('#composer');

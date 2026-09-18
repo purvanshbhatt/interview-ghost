@@ -219,6 +219,11 @@ function createWindow() {
 
   applyContentProtection(win, 'overlayWin');
 
+  win.setSkipTaskbar(true);
+  win.on('show', () => { if (win && !win.isDestroyed()) win.setSkipTaskbar(true); });
+  win.on('focus', () => { if (win && !win.isDestroyed()) win.setSkipTaskbar(true); });
+  win.on('restore', () => { if (win && !win.isDestroyed()) win.setSkipTaskbar(true); });
+
   win.setAlwaysOnTop(true, 'screen-saver', 1);
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   if (isMac && typeof win.setHiddenInMissionControl === 'function') win.setHiddenInMissionControl(true);
@@ -1135,13 +1140,19 @@ function createDashboardWindow() {
 
 function showDashboard() {
   if (!dashboardWin || dashboardWin.isDestroyed()) createDashboardWindow();
-  if (dashboardWin && !dashboardWin.isVisible()) dashboardWin.show();
-  if (dashboardWin && dashboardWin.isMinimized()) dashboardWin.restore();
-  dashboardWin.focus();
+  if (dashboardWin && !dashboardWin.isDestroyed()) {
+    dashboardWin.setSkipTaskbar(false);
+    if (!dashboardWin.isVisible()) dashboardWin.show();
+    if (dashboardWin.isMinimized()) dashboardWin.restore();
+    dashboardWin.focus();
+  }
 }
 
 function hideDashboard() {
-  if (dashboardWin && !dashboardWin.isDestroyed()) dashboardWin.hide();
+  if (dashboardWin && !dashboardWin.isDestroyed()) {
+    dashboardWin.setSkipTaskbar(true);
+    dashboardWin.hide();
+  }
 }
 
 function showOverlayFromDashboard() {

@@ -297,6 +297,44 @@
     });
   }
 
+  // Stealth confirmation helper — runs inside the protected Electron DOM so
+  // no OS dialog leaks onto screenshare or proctoring software.
+  function showStealthConfirm({ title = 'End Session?', message = 'Transcripts will be saved and a recap generated.', confirmText = 'End Session', cancelText = 'Cancel' } = {}) {
+    return new Promise((resolve) => {
+      const scrim = document.getElementById('confirm-scrim');
+      if (!scrim) {
+        // Fallback only if element doesn't exist
+        resolve(window.confirm(message));
+        return;
+      }
+      const titleEl = document.getElementById('confirm-title');
+      const bodyEl = document.getElementById('confirm-body');
+      const okBtn = document.getElementById('confirm-ok');
+      const cancelBtn = document.getElementById('confirm-cancel');
+
+      if (titleEl) titleEl.textContent = title;
+      if (bodyEl) bodyEl.textContent = message;
+      if (okBtn) okBtn.textContent = confirmText;
+      if (cancelBtn) cancelBtn.textContent = cancelText;
+
+      scrim.classList.remove('hidden');
+      setIgnore(false);
+
+      const cleanup = (result) => {
+        scrim.classList.add('hidden');
+        okBtn && okBtn.removeEventListener('click', onOk);
+        cancelBtn && cancelBtn.removeEventListener('click', onCancel);
+        resolve(result);
+      };
+
+      const onOk = () => cleanup(true);
+      const onCancel = () => cleanup(false);
+
+      okBtn && okBtn.addEventListener('click', onOk);
+      cancelBtn && cancelBtn.addEventListener('click', onCancel);
+    });
+  }
+
   // End Session — stops capture, asks main to write the transcript file +
   // run the recap, then re-shows the dashboard. The overlay itself stays
   // loaded (so it can re-appear fast on the next Start Mode) but is hidden
@@ -305,7 +343,12 @@
   const endBtn = document.getElementById('end-session-btn');
   if (endBtn) {
     endBtn.addEventListener('click', async () => {
-      const ok = window.confirm('End this session? Transcripts will be saved and a recap generated.');
+      const ok = await showStealthConfirm({
+        title: 'End Session?',
+        message: 'Transcripts will be saved and a recap generated.',
+        confirmText: 'End Session',
+        cancelText: 'Cancel'
+      });
       if (!ok) return;
       endBtn.disabled = true;
       endBtn.textContent = 'Ending...';
@@ -1607,12 +1650,15 @@
     const consentScrim = el.closest('#consent-scrim');
     if (consentScrim && consentScrim.classList.contains('hidden')) return false;
 
+    const confirmScrim = el.closest('#confirm-scrim');
+    if (confirmScrim && confirmScrim.classList.contains('hidden')) return false;
+
     const sidebar = el.closest('#transcript-sidebar');
     if (sidebar && (sidebar.classList.contains('hidden') || sidebar.style.display === 'none')) {
       return false;
     }
 
-    return !!el.closest('#toolbar, #panel-wrap, #transcript-sidebar, #settings-scrim, #consent-scrim, #resize-grip');
+    return !!el.closest('#toolbar, #panel-wrap, #transcript-sidebar, #settings-scrim, #consent-scrim, #confirm-scrim, #resize-grip');
   }
   document.addEventListener('mousemove', (e) => {
     lastCursor = { x: e.clientX, y: e.clientY };

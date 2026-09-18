@@ -32,33 +32,24 @@ export class MobileAudioCapture {
     // Wait for any prior teardown across any instance to fully finish
     await MobileAudioCapture.globalLock;
 
-    const recording = new Audio.Recording();
-    await recording.prepareToRecordAsync({
-      android: {
-        extension: '.m4a',
-        outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-        audioEncoder: Audio.AndroidAudioEncoder.AAC,
-        sampleRate: 16000,
-        numberOfChannels: 1,
-        bitRate: 64000,
-      },
-      ios: {
-        extension: '.m4a',
-        audioQuality: Audio.IOSAudioQuality.HIGH,
-        sampleRate: 16000,
-        numberOfChannels: 1,
-        bitRate: 64000,
-        linearPCMBitDepth: 16,
-        linearPCMIsBigEndian: false,
-        linearPCMIsFloat: false,
-      },
-      web: {
-        mimeType: 'audio/webm',
-        bitsPerSecond: 64000,
-      },
-    });
-    await recording.startAsync();
-    return recording;
+    try {
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      return recording;
+    } catch (err: any) {
+      // If a stale native recorder exists from an unexpected interruption, attempt reset
+      try {
+        const dummy = new Audio.Recording();
+        await dummy.stopAndUnloadAsync().catch(() => {});
+      } catch {}
+
+      // Fallback: direct prepare using universal high quality preset
+      const recording = new Audio.Recording();
+      await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      await recording.startAsync();
+      return recording;
+    }
   }
 
   /** Continuous capture (no segmentation). Returns success. */
@@ -74,7 +65,7 @@ export class MobileAudioCapture {
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
+        staysActiveInBackground: false,
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
       });
@@ -107,7 +98,7 @@ export class MobileAudioCapture {
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
+        staysActiveInBackground: false,
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
       });
@@ -158,7 +149,9 @@ export class MobileAudioCapture {
       }
     };
 
-    runLoop();
+    runLoop().catch((err) => {
+      callbacks?.onError?.(err instanceof Error ? err : new Error(String(err)));
+    });
     return true;
   }
 

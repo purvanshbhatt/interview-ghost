@@ -72,7 +72,7 @@ export const SessionScreen: React.FC<SessionScreenProps> = ({ mode: initialMode,
             if (mounted) transcribeSegment(uri);
           },
           onError: (err) => {
-            if (mounted) Alert.alert('Audio Error', err.message);
+            if (mounted) setSttError(err.message);
           },
         });
         if (mounted) setIsListening(ok);

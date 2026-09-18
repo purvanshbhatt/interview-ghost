@@ -73,8 +73,8 @@ html, body {
   overflow: hidden;
   pointer-events: none;                  /* only the actual UI blocks; gaps pass through */
 }
-#toolbar, #panel-wrap, #settings-scrim, #onboard-scrim, #consent-scrim { pointer-events: auto; }
-#toolbar, #panel-wrap, #panel, #messages, #action-row, #composer, #input, textarea, button, .act, .smart-pill, .more-btn, #send-btn, .s-close, .s-seg button, .ob-buttons button, .ob-ghost, .ob-primary { -webkit-app-region: no-drag; }
+#toolbar, #panel-wrap, #settings-scrim, #onboard-scrim, #consent-scrim, #confirm-scrim { pointer-events: auto; }
+#toolbar, #panel-wrap, #panel, #messages, #action-row, #composer, #input, textarea, button, .act, .smart-pill, .more-btn, #send-btn, .s-close, .s-seg button, .ob-buttons button, .ob-ghost, .ob-primary, #confirm-modal { -webkit-app-region: no-drag; }
 
 /* ============================ Toolbar pill ============================ */
 #toolbar {
@@ -130,13 +130,8 @@ html, body {
 .tb-divider { width: 1px; height: 22px; background: var(--glass-line); margin: 0 2px; }
 #toolbar button { border: none; background: transparent; color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background 140ms ease, transform 140ms ease; }
 .tb-logo {
-  width: 34px; height: 34px; border-radius: 12px;
-  background: #0d121f url('assets/logo.png') center/70% no-repeat !important;
-  border: 1px solid rgba(0, 240, 255, 0.4);
-  box-shadow: 0 4px 14px rgba(0, 240, 255, 0.35);
-  position: relative;
+  display: none !important;
 }
-.tb-logo:hover { filter: brightness(1.15); box-shadow: 0 4px 18px rgba(0, 240, 255, 0.55); }
 .tb-hide { gap: 6px; padding: 7px 14px 7px 12px; border-radius: var(--r-pill); font-size: 13px; font-weight: 600; color: var(--tx-2); border: 1px solid var(--glass-line); background: oklch(96% 0.02 260 / 0.06); }
 .tb-hide:hover { background: oklch(96% 0.02 260 / 0.12); }
 .tb-hide .chev { width: 14px; height: 14px; display: inline-flex; color: var(--tx-2); }
@@ -1037,6 +1032,12 @@ button:focus { outline: none; }
 .cs-title { font-size: 15px; font-weight: 620; color: var(--tx-1); line-height: 1.35; }
 .cs-body { margin-top: 10px; color: var(--tx-mut); font-size: 12.5px; line-height: 1.5; white-space: pre-line; }
 .cs-actions { display: flex; gap: 10px; justify-content: center; margin-top: 18px; }
+
+/* Stealth Confirmation Dialog (protected by setContentProtection inside overlay DOM) */
+#confirm-scrim { position: fixed; inset: 0; z-index: 45; display: grid; place-items: center; background: oklch(16% 0.03 270 / 0.5); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+#confirm-scrim.hidden { display: none; }
+#confirm-modal { width: min(390px, 92vw); padding: 24px 26px 18px; text-align: center; -webkit-app-region: no-drag; animation: overlayIn 240ms cubic-bezier(0.22,1,0.36,1); }
+
 
 /* ============================ Android & Phone Calls UI ============================ */
 .android-device-list {

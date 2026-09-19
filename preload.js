@@ -6,6 +6,7 @@ const ghostBridge = {
   settingsGet: () => ipcRenderer.invoke('settings:get'),
   settingsSet: (patch) => ipcRenderer.invoke('settings:set', patch),
   modePromptGet: (mode) => ipcRenderer.invoke('mode-prompt:get', { mode }),
+  modePromptGetDefault: (mode) => ipcRenderer.invoke('mode-prompt:get-default', { mode }),
   modePromptSet: (mode, prompt) => ipcRenderer.invoke('mode-prompt:set', { mode, prompt }),
   whisperModels: () => ipcRenderer.invoke('whisper:models'),
   whisperModelDownload: (modelId) => ipcRenderer.invoke('whisper:model-download', modelId),

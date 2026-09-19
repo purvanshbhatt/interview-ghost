@@ -107,7 +107,10 @@
     <div id="settings" class="glass">
       <div class="s-head">
         <div class="s-title">Settings</div>
-        <button id="s-close" class="s-close">Done</button>
+        <div class="s-head-actions">
+          <button id="s-save-btn" class="s-save-btn" type="button">Save</button>
+          <button id="s-close" class="s-close" type="button">Done</button>
+        </div>
       </div>
 
       <!-- Tab bar -->
@@ -261,17 +264,43 @@
 
       <!-- Tab: Style -->
       <div class="s-body s-tab-pane hidden" data-pane="style">
-        <label class="s-label">AI rules <span class="s-hint">how the AI should write its responses</span></label>
-        <textarea id="ai-rules" rows="10" spellcheck="false" maxlength="2000" placeholder="e.g.
-- Never use em-dashes.
-- Reply in 2-3 short bullet points.
-- Use a casual, first-person tone.
-- Avoid jargon; explain technical terms.
-- Don&#39;t start with &quot;I&quot;.
-"></textarea>
+        <label class="s-label">Prompt &amp; Style Helpers <span class="s-hint">click to toggle response rules</span></label>
+        <div class="style-presets-section">
+          <div class="style-group-title">⚡ Response Length</div>
+          <div class="style-chip-group" data-category="length">
+            <button type="button" class="style-chip" data-rule="Keep answers very concise (2-3 sentences max).">⚡ Ultra-Concise (&lt;3 sentences)</button>
+            <button type="button" class="style-chip" data-rule="Provide balanced, complete answers (3-5 sentences).">⚖️ Balanced (3-5 sentences)</button>
+            <button type="button" class="style-chip" data-rule="Provide in-depth, thorough explanations with complete context.">📖 Comprehensive &amp; Detailed</button>
+          </div>
+
+          <div class="style-group-title">👔 Persona &amp; Tone</div>
+          <div class="style-chip-group" data-category="tone">
+            <button type="button" class="style-chip" data-rule="Adopt an executive, strategic tone emphasizing business outcomes, ROI, and leadership.">👔 Executive / Strategic</button>
+            <button type="button" class="style-chip" data-rule="Adopt a senior technical tone emphasizing system architecture, trade-offs, and scalability.">💻 Senior Technical</button>
+            <button type="button" class="style-chip" data-rule="Adopt a warm, collaborative, and authentic conversational tone.">🤝 Warm &amp; Collaborative</button>
+            <button type="button" class="style-chip" data-rule="Sound exceptionally confident, decisive, and authoritative.">🔥 Decisive &amp; Confident</button>
+          </div>
+
+          <div class="style-group-title">📋 Structure &amp; Format</div>
+          <div class="style-chip-group" data-category="format">
+            <button type="button" class="style-chip" data-rule="Use short, scannable bullet points for clarity.">• Bullet Points Only</button>
+            <button type="button" class="style-chip" data-rule="Write responses as direct, verbatim speech ready to say out loud without preamble.">🗣 Scripted Direct Speech</button>
+            <button type="button" class="style-chip" data-rule="Format behavioral answers strictly using STAR (Situation, Task, Action, Result).">🎯 STAR Framework</button>
+          </div>
+
+          <div class="style-group-title">🚫 Guardrails &amp; Filters</div>
+          <div class="style-chip-group" data-category="guardrail">
+            <button type="button" class="style-chip" data-rule="Never repeat or echo the interviewer's question back at them.">🚫 Never Repeat Questions</button>
+            <button type="button" class="style-chip" data-rule="Eliminate filler words, verbal hesitation, and generic corporate clichés.">🚫 No Filler or Buzzwords</button>
+            <button type="button" class="style-chip" data-rule="Always answer in first-person ('I', 'my team').">👤 First-Person Perspective</button>
+          </div>
+        </div>
+
+        <label class="s-label" style="margin-top:14px;">Custom AI Rules <span class="s-hint">one instruction per line</span></label>
+        <textarea id="ai-rules" rows="6" spellcheck="false" maxlength="2000" placeholder="e.g.&#10;- Never use em-dashes.&#10;- Focus on distributed systems examples.&#10;- Avoid jargon."></textarea>
         <div class="s-counter"><span id="ai-rules-count">0</span> / 2000</div>
         <div class="s-hint-block">
-          These rules tell Ghost <strong>how</strong> to write, not <strong>what</strong> to say. Use one imperative sentence per line (e.g. <em>Never use em-dashes.</em>). They apply to every mode except coding-problem solves (LeetCode), which stays strict. Stored locally; never sent anywhere except the AI provider when Ghost answers a question.
+          These rules tell Ghost <strong>how</strong> to write, not <strong>what</strong> to say. Presets and custom rules are combined and applied to all conversational modes.
         </div>
       </div>
  

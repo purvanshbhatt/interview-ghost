@@ -303,8 +303,8 @@
     return new Promise((resolve) => {
       const scrim = document.getElementById('confirm-scrim');
       if (!scrim) {
-        // Fallback only if element doesn't exist
-        resolve(window.confirm(message));
+        // Never trigger native OS modals — they leak onto screenshare and proctoring tools
+        resolve(true);
         return;
       }
       const titleEl = document.getElementById('confirm-title');
@@ -1127,6 +1127,67 @@
   $('#s-close').addEventListener('click', () => { void closeSettings(); });
   scrim.addEventListener('click', (e) => { if (e.target === scrim) void closeSettings(); });
 
+  const sSaveBtn = document.getElementById('s-save-btn');
+  if (sSaveBtn) {
+    sSaveBtn.addEventListener('click', async () => {
+      sSaveBtn.disabled = true;
+      sSaveBtn.textContent = 'Saving…';
+      try {
+        const ok = await saveSettings();
+        if (ok) {
+          sSaveBtn.textContent = 'Saved!';
+          sSaveBtn.classList.add('saved');
+          setTimeout(() => {
+            sSaveBtn.textContent = 'Save';
+            sSaveBtn.classList.remove('saved');
+            sSaveBtn.disabled = false;
+          }, 1200);
+        } else {
+          sSaveBtn.textContent = 'Save';
+          sSaveBtn.disabled = false;
+        }
+      } catch (err) {
+        sSaveBtn.textContent = 'Save';
+        sSaveBtn.disabled = false;
+        showToast('Save failed: ' + (err.message || err), 3000);
+      }
+    });
+  }
+
+  // Style chips in settings
+  document.querySelectorAll('.style-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const rule = chip.dataset.rule;
+      if (!rule) return;
+      const aiRulesEl = document.getElementById('ai-rules');
+      if (!aiRulesEl) return;
+      let current = aiRulesEl.value || '';
+      const lines = current.split('\n').map(l => l.trim()).filter(Boolean);
+      const exists = lines.some(l => l.includes(rule) || rule.includes(l));
+      if (exists) {
+        const next = lines.filter(l => !l.includes(rule) && !rule.includes(l));
+        aiRulesEl.value = next.join('\n');
+        chip.classList.remove('active');
+      } else {
+        lines.push(rule);
+        aiRulesEl.value = lines.join('\n');
+        chip.classList.add('active');
+      }
+      updateAiRulesCounter();
+      saveSettings().catch(() => {});
+    });
+  });
+
+  function syncStyleChipsToRules() {
+    const aiRulesEl = document.getElementById('ai-rules');
+    const text = (aiRulesEl && aiRulesEl.value) || '';
+    document.querySelectorAll('.style-chip').forEach((chip) => {
+      const rule = chip.dataset.rule;
+      if (!rule) return;
+      chip.classList.toggle('active', text.includes(rule));
+    });
+  }
+
   // Tab switching
   document.querySelectorAll('.s-tab').forEach((tab) => {
     tab.addEventListener('click', async () => {
@@ -1182,6 +1243,7 @@
     // Style tab
     $('#ai-rules').value = settings.aiRules || '';
     updateAiRulesCounter();
+    syncStyleChipsToRules();
     // Q&A tab
     $('#salary-target').value = settings.salaryTarget || '';
     $('#questions-to-ask').value = settings.questionsToAsk || '';
@@ -1189,6 +1251,11 @@
     const saveTranscriptsToggle = $('#save-transcripts-toggle');
     if (saveTranscriptsToggle) saveTranscriptsToggle.checked = settings.saveTranscripts !== false;
   }
+
+  $('#ai-rules').addEventListener('input', () => {
+    updateAiRulesCounter();
+    syncStyleChipsToRules();
+  });
 
   // Whoever cue has been told it may answer questions for. Empty is the normal
   // state — nothing appears here until something has asked and been allowed.
@@ -1397,7 +1464,14 @@
 
   $('#whisper-delete').addEventListener('click', async () => {
     const model = getSelectedWhisperModel();
-    if (!model || !window.confirm(`Delete the ${model.id} model (${formatBytes(model.bytes)}) from this computer?`)) return;
+    if (!model) return;
+    const ok = await showStealthConfirm({
+      title: 'Delete Whisper Model?',
+      message: `Delete the ${model.id} model (${formatBytes(model.bytes)}) from this computer?`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel'
+    });
+    if (!ok) return;
     try {
       await cue.whisperModelDelete(model.id);
       $('#whisper-status').textContent = `${model.id} deleted.`;
@@ -1530,52 +1604,62 @@
   }
 
   async function saveSettings() {
-    // Keys
-    settings.apiKeys.openai = $('#key-openai').value.trim();
-    settings.apiKeys.anthropic = $('#key-anthropic').value.trim();
-    settings.apiKeys.gemini = $('#key-gemini').value.trim();
-    settings.apiKeys.deepgram = $('#key-deepgram').value.trim();
-    settings.apiKeys.custom = $('#key-custom').value.trim();
-    settings.baseUrl = $('#base-url').value.trim();
-    settings.apiKeys.ollama = $('#key-ollama').value.trim();
-    settings.apiKeys.groq = $('#key-groq').value.trim();
-    settings.apiKeys.minimax = $('#key-minimax').value.trim();
-    settings.apiKeys.azure = $('#key-azure').value.trim();
-    settings.azureEndpoint = $('#azure-endpoint').value.trim();
+    const getVal = (id) => {
+      const el = document.getElementById(id);
+      return el ? el.value.trim() : '';
+    };
+    if (!settings.apiKeys) settings.apiKeys = {};
+    settings.apiKeys.openai = getVal('key-openai');
+    settings.apiKeys.anthropic = getVal('key-anthropic');
+    settings.apiKeys.gemini = getVal('key-gemini');
+    settings.apiKeys.deepgram = getVal('key-deepgram');
+    settings.apiKeys.custom = getVal('key-custom');
+    settings.baseUrl = getVal('base-url');
+    settings.apiKeys.ollama = getVal('key-ollama');
+    settings.apiKeys.groq = getVal('key-groq');
+    settings.apiKeys.minimax = getVal('key-minimax');
+    settings.apiKeys.azure = getVal('key-azure');
+    settings.azureEndpoint = getVal('azure-endpoint');
+    if (!settings.models) settings.models = {};
     if (!settings.models[settings.provider]) settings.models[settings.provider] = {};
-    settings.models[settings.provider].fast = $('#model-fast').value.trim();
-    settings.models[settings.provider].smart = $('#model-smart').value.trim();
+    settings.models[settings.provider].fast = getVal('model-fast');
+    settings.models[settings.provider].smart = getVal('model-smart');
     // Transcription
     if (!settings.localWhisper) settings.localWhisper = {};
-    settings.localWhisper.modelId = $('#whisper-model').value || settings.localWhisper.modelId || 'base.en';
-    settings.localWhisper.language = $('#whisper-language').value || 'auto';
-    settings.localWhisper.threads = Math.max(0, Math.min(64, Number.parseInt($('#whisper-threads').value, 10) || 0));
+    const whisperModelEl = document.getElementById('whisper-model');
+    settings.localWhisper.modelId = (whisperModelEl && whisperModelEl.value) || settings.localWhisper.modelId || 'base.en';
+    const whisperLangEl = document.getElementById('whisper-language');
+    settings.localWhisper.language = (whisperLangEl && whisperLangEl.value) || 'auto';
+    const whisperThreadsEl = document.getElementById('whisper-threads');
+    settings.localWhisper.threads = Math.max(0, Math.min(64, Number.parseInt(whisperThreadsEl ? whisperThreadsEl.value : '0', 10) || 0));
     // Profile
-    settings.resumeText = $('#resume-text').value.trim();
-    settings.jobDescription = $('#job-description').value.trim();
+    settings.resumeText = getVal('resume-text');
+    settings.jobDescription = getVal('job-description');
     // Interview Prep
-    settings.starStories = $('#star-stories').value.trim();
-    settings.whyCompany = $('#why-company').value.trim();
-    settings.whyLeaving = $('#why-leaving').value.trim();
-    settings.workStyle = $('#work-style').value.trim();
+    settings.starStories = getVal('star-stories');
+    settings.whyCompany = getVal('why-company');
+    settings.whyLeaving = getVal('why-leaving');
+    settings.workStyle = getVal('work-style');
     // Style tab
-    settings.aiRules = $('#ai-rules').value.trim();
+    settings.aiRules = getVal('ai-rules');
     // Q&A
-    settings.salaryTarget = $('#salary-target').value.trim();
-    settings.questionsToAsk = $('#questions-to-ask').value.trim();
+    settings.salaryTarget = getVal('salary-target');
+    settings.questionsToAsk = getVal('questions-to-ask');
     // General
-    const saveTranscriptsToggle = $('#save-transcripts-toggle');
+    const saveTranscriptsToggle = document.getElementById('save-transcripts-toggle');
     if (saveTranscriptsToggle) settings.saveTranscripts = saveTranscriptsToggle.checked;
     try {
       settings = await cue.settingsSet(settings);
-      $('#s-status').textContent = statusText();
+      const st = document.getElementById('s-status');
+      if (st) st.textContent = statusText();
       updatePrepStatus();
       updateSmartTooltip();
+      syncStyleChipsToRules();
       return true;
     } catch (error) {
       const message = error && error.message ? error.message : String(error);
-      $('#s-status').textContent = message;
-      $('#base-url').focus();
+      const st = document.getElementById('s-status');
+      if (st) st.textContent = message;
       return false;
     }
   }

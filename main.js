@@ -17,6 +17,14 @@ if (!gotTheLock) {
   });
 }
 
+// Global process error handlers to prevent silent process crashes
+process.on('uncaughtException', (err) => {
+  console.error('[ghost] Uncaught Exception:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[ghost] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 const path = require('path');
 const os = require('os');
 const store = require('./src/store');
@@ -618,25 +626,36 @@ ipcMain.handle('capture:toggle', async () => {
 
 ipcMain.handle('capture:state', () => ({ capturing: state.capturing, active: state.capturing, busy: state.busy, streaming: streamingMode }));
 
+// Bound batch buffers to ~15s to prevent unbounded memory growth & OOM crashes on long sessions
+const MAX_BUFFER_CHUNKS = 150;
+
 ipcMain.on('mic:pcm', (_e, arrayBuffer) => {
   const buf = Buffer.from(arrayBuffer);
-  buffers.you.push(buf);
+  // Only accumulate in batch mode (flushLoop). When streaming or using local whisper,
+  // audio is streamed directly and batch buffers would otherwise leak memory infinitely.
+  if (!streamingMode && !localWhisperTranscriber) {
+    buffers.you.push(buf);
+    if (buffers.you.length > MAX_BUFFER_CHUNKS) buffers.you.shift();
+  }
   if (streamingMode && streamingSTT.you) {
-    streamingSTT.you.sendAudio(buf);
+    try { streamingSTT.you.sendAudio(buf); } catch (e) { console.error('[streaming you] error:', e); }
   }
   if (localWhisperTranscriber) {
-    localWhisperTranscriber.push('you', buf);
+    try { localWhisperTranscriber.push('you', buf); } catch (e) { console.error('[whisper you] error:', e); }
   }
 });
 
 ipcMain.on('system:pcm', (_e, arrayBuffer) => {
   const buf = Buffer.from(arrayBuffer);
-  buffers.them.push(buf);
+  if (!streamingMode && !localWhisperTranscriber) {
+    buffers.them.push(buf);
+    if (buffers.them.length > MAX_BUFFER_CHUNKS) buffers.them.shift();
+  }
   if (streamingMode && streamingSTT.them) {
-    streamingSTT.them.sendAudio(buf);
+    try { streamingSTT.them.sendAudio(buf); } catch (e) { console.error('[streaming them] error:', e); }
   }
   if (localWhisperTranscriber) {
-    localWhisperTranscriber.push('them', buf);
+    try { localWhisperTranscriber.push('them', buf); } catch (e) { console.error('[whisper them] error:', e); }
   }
 });
 
@@ -702,17 +721,24 @@ ipcMain.handle('transcript:clear', () => {
 });
 
 ipcMain.handle('settings:get', () => store.getSettings());
-ipcMain.handle('settings:set', (_e, patch) => {
-  const updated = store.setSettings(patch);
-  send('settings:changed', updated);
-  sendToDashboard('settings:changed', updated);
-  if (patch.sttProvider !== undefined || patch.whisperModel !== undefined) {
-    sttDisabled = false;
-    if (state.capturing) {
-      setCapturing(false).then(() => setCapturing(true));
+ipcMain.handle('settings:set', async (_e, patch) => {
+  try {
+    const updated = store.setSettings(patch);
+    send('settings:changed', updated);
+    sendToDashboard('settings:changed', updated);
+    if (patch && (patch.sttProvider !== undefined || patch.whisperModel !== undefined)) {
+      sttDisabled = false;
+      if (state.capturing) {
+        setCapturing(false).then(() => setCapturing(true)).catch((err) => {
+          console.error('[ghost] STT restart error:', err);
+        });
+      }
     }
+    return updated;
+  } catch (err) {
+    console.error('[ghost] settings:set error:', err);
+    return store.getSettings();
   }
-  return updated;
 });
 
 ipcMain.handle('invisibility:status', () => ({
@@ -887,6 +913,20 @@ async function sessionEndInternal(returnToDashboard) {
 ipcMain.handle('mode-prompt:get', (_e, { mode }) => {
   const prompts = store.getSettings().customPrompts || {};
   return { ok: true, prompt: prompts[mode] || null };
+});
+
+ipcMain.handle('mode-prompt:get-default', (_e, { mode }) => {
+  const modeDef = MODES[mode];
+  if (!modeDef) return { ok: false, error: 'Unknown mode: ' + mode };
+  let defaultPrompt = '';
+  try {
+    if (typeof modeDef.buildSystem === 'function') {
+      defaultPrompt = modeDef.buildSystem('', '');
+    }
+  } catch (err) {
+    console.error('[mode-prompt:get-default] error:', err);
+  }
+  return { ok: true, prompt: defaultPrompt };
 });
 
 ipcMain.handle('mode-prompt:set', (_e, { mode, prompt }) => {
@@ -1113,7 +1153,7 @@ function createDashboardWindow() {
     resizable: true,
     minimizable: true,
     maximizable: true,
-    skipTaskbar: false,
+    skipTaskbar: true,
     alwaysOnTop: false,
     fullscreenable: true,
     webPreferences: {
@@ -1124,6 +1164,11 @@ function createDashboardWindow() {
     }
   });
   applyContentProtection(dashboardWin, 'dashboardWin');
+  dashboardWin.setSkipTaskbar(true);
+  dashboardWin.on('show', () => { if (dashboardWin && !dashboardWin.isDestroyed()) dashboardWin.setSkipTaskbar(true); });
+  dashboardWin.on('focus', () => { if (dashboardWin && !dashboardWin.isDestroyed()) dashboardWin.setSkipTaskbar(true); });
+  dashboardWin.on('restore', () => { if (dashboardWin && !dashboardWin.isDestroyed()) dashboardWin.setSkipTaskbar(true); });
+
   dashboardWin.loadFile(path.join(__dirname, 'renderer', 'dashboard.html'));
   dashboardWin.on('closed', () => {
     dashboardWin = null;
@@ -1141,7 +1186,7 @@ function createDashboardWindow() {
 function showDashboard() {
   if (!dashboardWin || dashboardWin.isDestroyed()) createDashboardWindow();
   if (dashboardWin && !dashboardWin.isDestroyed()) {
-    dashboardWin.setSkipTaskbar(false);
+    dashboardWin.setSkipTaskbar(true);
     if (!dashboardWin.isVisible()) dashboardWin.show();
     if (dashboardWin.isMinimized()) dashboardWin.restore();
     dashboardWin.focus();

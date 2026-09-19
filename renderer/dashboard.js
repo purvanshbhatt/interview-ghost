@@ -185,6 +185,42 @@
     }
   };
 
+  const MODE_PROMPT_PRESETS = {
+    assist: [
+      { label: '🎯 Executive', prompt: 'Focus on high-level strategic reasoning, business impact, and leadership decisions. Deliver 2-4 punchy, authoritative sentences in first person with zero hesitation.' },
+      { label: '⚡ Rapid Bullets', prompt: 'Answer in 2-3 short, scannable bullet points. Deliver the immediate core answer with no fluff or preamble.' },
+      { label: '💻 Deep Technical', prompt: 'Provide an in-depth technical response covering architectural tradeoffs, scalability, data structures, and edge cases.' },
+      { label: '🗣 STAR Behavioral', prompt: 'Structure answer strictly with STAR: Situation (1 sentence), Task (1 sentence), Action (2-3 concrete steps taken), Result (quantified metrics).' }
+    ],
+    say: [
+      { label: '🗣 Direct Script', prompt: 'Provide the exact words the candidate should say out loud in first person. Natural, conversational, and confident. Never echo the question.' },
+      { label: '⚡ Punchy & Short', prompt: 'Give a 2-sentence direct answer. No fluff, no hesitation, straight to the point.' },
+      { label: '🎯 STAR Storyteller', prompt: 'Deliver a structured STAR response: Situation -> Task -> Action -> Result. High energy, authentic, and compelling.' },
+      { label: '🤝 Collaborative', prompt: 'Adopt a warm, thoughtful teammate persona emphasizing listening, cross-functional collaboration, and ownership.' }
+    ],
+    mock: [
+      { label: '👔 Tough FAANG Bar-Raiser', prompt: 'Act as a rigorous FAANG senior hiring manager. Ask challenging, probing follow-up questions. Press on edge cases and scalability trade-offs. One question at a time.' },
+      { label: '🤝 Friendly Screener', prompt: 'Act as a friendly recruiter or hiring manager focusing on culture, teamwork, conflict resolution, and leadership principles.' },
+      { label: '💻 System Design Architect', prompt: 'Act as a principal architect conducting a system design interview. Probe on bottlenecks, reliability, data partitioning, and failure modes.' }
+    ],
+    phoneCall: [
+      { label: '📞 Audio-First Punchy', prompt: 'Audio-first responses designed for phone calls. Short, crisp sentences with vocal signposting ("First... Next... The result was..."). Under 3 sentences.' },
+      { label: '⚡ Elevator Pitch', prompt: 'High-energy, focused answers emphasizing past wins and relevant skills. Keep conversational flow moving with zero pauses.' }
+    ],
+    coffee: [
+      { label: '☕ Casual Networking', prompt: 'Friendly, warm, and natural coffee-chat peer conversation. Trade short turns, ask curious questions, share relatable industry thoughts.' },
+      { label: '💡 Tech Trends & Vision', prompt: 'Discuss industry trends, developer productivity, emerging architectures, and career philosophies in a relaxed peer-to-peer style.' }
+    ],
+    leetcode: [
+      { label: '⚡ Clean & Optimal', prompt: 'Provide an optimal solution with time/space complexity analysis and a brief approach explanation. Idiomatic code only.' },
+      { label: '💡 Step-by-Step Approach', prompt: 'Explain the brute force approach first, then optimize, followed by the complete working code solution.' }
+    ],
+    notes: [
+      { label: '📋 Action Items & Owners', prompt: 'Extract key decisions, deliverables, owners, deadlines, and open questions into clean Markdown tables and checklists.' },
+      { label: '📝 Executive Summary', prompt: 'Summarize the meeting into a crisp executive briefing: core problem, decisions reached, financial/technical impact, and next steps.' }
+    ]
+  };
+
   async function loadModes() {
     const res = await cue.modeList();
     if (!res || !res.ok) {
@@ -207,6 +243,15 @@
         accent: 'cyan'
       };
 
+      const presets = MODE_PROMPT_PRESETS[mode.id] || [
+        { label: '⚡ Concise', prompt: 'Keep answers tight, focused, and under 3 sentences.' },
+        { label: '📖 In-Depth', prompt: 'Provide a comprehensive and detailed explanation.' }
+      ];
+
+      const presetsHtml = presets.map((p, idx) => 
+        `<button class="mps-preset-chip" type="button" data-preset-idx="${idx}" title="${textEscape(p.prompt)}">${textEscape(p.label)}</button>`
+      ).join('');
+
       const card = document.createElement('div');
       card.className = `mode-card accent-${meta.accent}`;
       card.dataset.mode = mode.id;
@@ -226,23 +271,34 @@
           '<span>Drop PDF/DOCX/TXT context files, or use Add file…</span>' +
         '</div>' +
         '<div class="file-list"></div>' +
-        '<div class="custom-prompt">' +
-          '<button class="cp-toggle" type="button">✏️ Tweak custom prompt</button>' +
-          '<textarea class="cp-text hidden" spellcheck="false" placeholder="Optional: replace this mode\'s built-in instruction with your own prompt. It is used alongside your context files."></textarea>' +
-          '<div class="cp-meta hidden"><span class="cp-status">Saved</span><button class="cp-clear" type="button">Clear</button></div>' +
+        '<div class="mode-prompt-section">' +
+          '<div class="mps-header">' +
+            '<span class="mps-label">Prompt Helper</span>' +
+            '<div class="mps-actions">' +
+              '<button class="mps-load-default" type="button" title="Inspect & customize built-in instructions">Load Built-in</button>' +
+              '<button class="cp-toggle" type="button">✏️ Custom</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="mps-presets-wrap">' +
+            '<div class="mps-presets">' +
+              presetsHtml +
+            '</div>' +
+          '</div>' +
+          '<textarea class="cp-text hidden" spellcheck="false" placeholder="Customize this mode\'s prompt. Pick a template above or type your own instructions..."></textarea>' +
+          '<div class="cp-meta hidden"><span class="cp-status">Saved</span><button class="cp-clear" type="button">Reset</button></div>' +
         '</div>' +
         '<div class="card-actions">' +
           '<button class="add-file-btn">+ Add file</button>' +
           '<button class="start-btn">Start ' + meta.title + ' &rarr;</button>' +
         '</div>'
       );
-      wireModeCard(card, mode);
+      wireModeCard(card, mode, presets);
       root.appendChild(card);
       loadModeContext(mode.id);
     }
   }
 
-  function wireModeCard(card, mode) {
+  function wireModeCard(card, mode, presets) {
     card.querySelector('.start-btn').addEventListener('click', () => cue.modeStart(mode.id).then(onStartResult, onStartError));
     card.querySelector('.add-file-btn').addEventListener('click', () => cue.modeContextPickAndAdd(mode.id).then((r) => {
       if (r && r.canceled) return showToast('Cancelled', 1200);
@@ -272,26 +328,102 @@
     });
 
     const toggle = card.querySelector('.cp-toggle');
+    const loadDefaultBtn = card.querySelector('.mps-load-default');
     const textarea = card.querySelector('.cp-text');
     const meta = card.querySelector('.cp-meta');
     const status = card.querySelector('.cp-status');
     const clearBtn = card.querySelector('.cp-clear');
+    const presetChips = Array.from(card.querySelectorAll('.mps-preset-chip'));
     let loaded = false;
     let saveTimer = null;
+
     function setHasPrompt(has) {
       toggle.classList.toggle('has-prompt', !!has);
       toggle.title = has ? 'Custom prompt active — edit it' : 'Tweak this mode\'s prompt';
     }
+
+    function checkActivePreset(text) {
+      const trimmed = (text || '').trim();
+      presetChips.forEach((chip) => {
+        const idx = Number(chip.dataset.presetIdx);
+        const p = presets[idx];
+        chip.classList.toggle('active', !!(p && p.prompt && p.prompt.trim() === trimmed));
+      });
+    }
+
+    // Initialize prompt state on card
+    cue.modePromptGet(mode.id).then((r) => {
+      if (r && r.ok && r.prompt && r.prompt.trim()) {
+        textarea.value = r.prompt;
+        setHasPrompt(true);
+        checkActivePreset(r.prompt);
+        loaded = true;
+      }
+    }).catch(() => {});
+
+    presetChips.forEach((chip) => {
+      chip.addEventListener('click', async () => {
+        const idx = Number(chip.dataset.presetIdx);
+        const p = presets[idx];
+        if (!p) return;
+        const isActive = chip.classList.contains('active');
+        if (isActive) {
+          // Deselect
+          textarea.value = '';
+          const r = await cue.modePromptSet(mode.id, '');
+          status.textContent = (r && r.ok) ? 'Reset to default' : 'Failed';
+          setHasPrompt(false);
+          checkActivePreset('');
+          showToast('Reset ' + mode.id + ' to default prompt.', 1500);
+        } else {
+          // Select preset
+          textarea.value = p.prompt;
+          textarea.classList.remove('hidden');
+          meta.classList.remove('hidden');
+          status.textContent = 'Saving…';
+          const r = await cue.modePromptSet(mode.id, p.prompt);
+          status.textContent = (r && r.ok) ? 'Saved' : 'Save failed';
+          setHasPrompt(true);
+          checkActivePreset(p.prompt);
+          showToast('Applied ' + p.label + ' template to ' + mode.id + '.', 1500);
+        }
+      });
+    });
+
+    loadDefaultBtn.addEventListener('click', async () => {
+      textarea.classList.remove('hidden');
+      meta.classList.remove('hidden');
+      textarea.focus();
+      try {
+        const r = cue.modePromptGetDefault ? await cue.modePromptGetDefault(mode.id) : null;
+        if (r && r.ok && r.prompt) {
+          textarea.value = r.prompt;
+          status.textContent = 'Loaded default (unsaved)';
+          showToast('Loaded built-in prompt. Tweak and edit freely.', 2000);
+        } else {
+          showToast('Default instructions loaded.', 1500);
+        }
+      } catch (err) {
+        showToast('Could not load built-in: ' + (err.message || err), 2500);
+      }
+    });
+
     toggle.addEventListener('click', async () => {
       const open = textarea.classList.contains('hidden');
       if (open && !loaded) {
         const r = await cue.modePromptGet(mode.id);
-        if (r && r.ok) { textarea.value = r.prompt || ''; setHasPrompt(!!(r.prompt && r.prompt.trim())); loaded = true; }
+        if (r && r.ok) {
+          textarea.value = r.prompt || '';
+          setHasPrompt(!!(r.prompt && r.prompt.trim()));
+          checkActivePreset(r.prompt || '');
+          loaded = true;
+        }
       }
       textarea.classList.toggle('hidden', !open);
       meta.classList.toggle('hidden', !open);
       if (open) textarea.focus();
     });
+
     textarea.addEventListener('input', () => {
       clearTimeout(saveTimer);
       status.textContent = 'Saving…';
@@ -299,13 +431,17 @@
         const r = await cue.modePromptSet(mode.id, textarea.value);
         status.textContent = (r && r.ok) ? 'Saved' : 'Save failed';
         setHasPrompt(!!(textarea.value && textarea.value.trim()));
+        checkActivePreset(textarea.value);
       }, 350);
     });
+
     clearBtn.addEventListener('click', async () => {
       textarea.value = '';
       const r = await cue.modePromptSet(mode.id, '');
       status.textContent = (r && r.ok) ? 'Cleared' : 'Failed';
       setHasPrompt(false);
+      checkActivePreset('');
+      showToast('Cleared custom prompt. Using default mode behavior.', 1500);
     });
   }
 
@@ -547,9 +683,9 @@
     $('#star-stories').value = settings.starStories || '';
     $('#why-company').value = settings.whyCompany || '';
     $('#why-leaving').value = settings.whyLeaving || '';
-    $('#work-style').value = settings.workStyle || '';
     $('#ai-rules').value = settings.aiRules || '';
     updateAiRulesCounter();
+    syncStyleChipsToRules();
     $('#salary-target').value = settings.salaryTarget || '';
     $('#questions-to-ask').value = settings.questionsToAsk || '';
     const toggle = $('#save-transcripts-toggle');
@@ -558,37 +694,106 @@
   }
 
   function collectSettings() {
+    const getVal = (id) => {
+      const el = document.getElementById(id);
+      return el ? el.value.trim() : '';
+    };
     if (!settings.apiKeys) settings.apiKeys = {};
-    settings.apiKeys.openai = $('#key-openai').value.trim();
-    settings.apiKeys.anthropic = $('#key-anthropic').value.trim();
-    settings.apiKeys.gemini = $('#key-gemini').value.trim();
-    settings.apiKeys.deepgram = $('#key-deepgram').value.trim();
-    settings.apiKeys.custom = $('#key-custom').value.trim();
-    settings.baseUrl = $('#base-url').value.trim();
-    settings.apiKeys.ollama = $('#key-ollama').value.trim();
-    settings.apiKeys.groq = $('#key-groq').value.trim();
-    settings.apiKeys.minimax = $('#key-minimax').value.trim();
-    settings.apiKeys.azure = $('#key-azure').value.trim();
-    settings.azureEndpoint = $('#azure-endpoint').value.trim();
+    settings.apiKeys.openai = getVal('key-openai');
+    settings.apiKeys.anthropic = getVal('key-anthropic');
+    settings.apiKeys.gemini = getVal('key-gemini');
+    settings.apiKeys.deepgram = getVal('key-deepgram');
+    settings.apiKeys.custom = getVal('key-custom');
+    settings.baseUrl = getVal('base-url');
+    settings.apiKeys.ollama = getVal('key-ollama');
+    settings.apiKeys.groq = getVal('key-groq');
+    settings.apiKeys.minimax = getVal('key-minimax');
+    settings.apiKeys.azure = getVal('key-azure');
+    settings.azureEndpoint = getVal('azure-endpoint');
     if (!settings.models) settings.models = {};
     if (!settings.models[settings.provider]) settings.models[settings.provider] = {};
-    settings.models[settings.provider].fast = $('#model-fast').value.trim();
-    settings.models[settings.provider].smart = $('#model-smart').value.trim();
+    settings.models[settings.provider].fast = getVal('model-fast');
+    settings.models[settings.provider].smart = getVal('model-smart');
     if (!settings.localWhisper) settings.localWhisper = {};
-    settings.localWhisper.modelId = $('#whisper-model').value || settings.localWhisper.modelId || 'base.en';
-    settings.localWhisper.language = $('#whisper-language').value || 'auto';
-    settings.localWhisper.threads = Math.max(0, Math.min(64, Number.parseInt($('#whisper-threads').value, 10) || 0));
-    settings.resumeText = $('#resume-text').value.trim();
-    settings.jobDescription = $('#job-description').value.trim();
-    settings.starStories = $('#star-stories').value.trim();
-    settings.whyCompany = $('#why-company').value.trim();
-    settings.whyLeaving = $('#why-leaving').value.trim();
-    settings.workStyle = $('#work-style').value.trim();
-    settings.aiRules = $('#ai-rules').value.trim();
-    settings.salaryTarget = $('#salary-target').value.trim();
-    settings.questionsToAsk = $('#questions-to-ask').value.trim();
+    const whisperModelEl = document.getElementById('whisper-model');
+    settings.localWhisper.modelId = (whisperModelEl && whisperModelEl.value) || settings.localWhisper.modelId || 'base.en';
+    const whisperLangEl = document.getElementById('whisper-language');
+    settings.localWhisper.language = (whisperLangEl && whisperLangEl.value) || 'auto';
+    const whisperThreadsEl = document.getElementById('whisper-threads');
+    settings.localWhisper.threads = Math.max(0, Math.min(64, Number.parseInt(whisperThreadsEl ? whisperThreadsEl.value : '0', 10) || 0));
+    settings.resumeText = getVal('resume-text');
+    settings.jobDescription = getVal('job-description');
+    settings.starStories = getVal('star-stories');
+    settings.whyCompany = getVal('why-company');
+    settings.whyLeaving = getVal('why-leaving');
+    settings.workStyle = getVal('work-style');
+    settings.aiRules = getVal('ai-rules');
+    settings.salaryTarget = getVal('salary-target');
+    settings.questionsToAsk = getVal('questions-to-ask');
     const toggle = $('#save-transcripts-toggle');
     if (toggle) settings.saveTranscripts = toggle.checked;
+  }
+
+  // Explicit Save button in Drawer
+  const saveSettingsBtn = $('#save-settings-btn');
+  if (saveSettingsBtn) {
+    saveSettingsBtn.addEventListener('click', async () => {
+      saveSettingsBtn.disabled = true;
+      saveSettingsBtn.textContent = 'Saving…';
+      collectSettings();
+      try {
+        settings = await cue.settingsSet(settings);
+        saveSettingsBtn.textContent = 'Saved!';
+        saveSettingsBtn.classList.add('saved');
+        showSaved();
+        updateReadinessChecklist();
+        syncStyleChipsToRules();
+        showToast('Settings saved successfully.', 1500);
+        setTimeout(() => {
+          saveSettingsBtn.textContent = 'Save Settings';
+          saveSettingsBtn.classList.remove('saved');
+          saveSettingsBtn.disabled = false;
+        }, 1200);
+      } catch (err) {
+        saveSettingsBtn.textContent = 'Save Settings';
+        saveSettingsBtn.disabled = false;
+        showToast('Save failed: ' + (err.message || err), 3000);
+      }
+    });
+  }
+
+  // Style chips in dashboard
+  document.querySelectorAll('#settings-drawer .style-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const rule = chip.dataset.rule;
+      if (!rule) return;
+      const aiRulesEl = $('#ai-rules');
+      if (!aiRulesEl) return;
+      let current = aiRulesEl.value || '';
+      const lines = current.split('\n').map(l => l.trim()).filter(Boolean);
+      const exists = lines.some(l => l.includes(rule) || rule.includes(l));
+      if (exists) {
+        const next = lines.filter(l => !l.includes(rule) && !rule.includes(l));
+        aiRulesEl.value = next.join('\n');
+        chip.classList.remove('active');
+      } else {
+        lines.push(rule);
+        aiRulesEl.value = lines.join('\n');
+        chip.classList.add('active');
+      }
+      updateAiRulesCounter();
+      autosave();
+    });
+  });
+
+  function syncStyleChipsToRules() {
+    const aiRulesEl = $('#ai-rules');
+    const text = (aiRulesEl && aiRulesEl.value) || '';
+    document.querySelectorAll('#settings-drawer .style-chip').forEach((chip) => {
+      const rule = chip.dataset.rule;
+      if (!rule) return;
+      chip.classList.toggle('active', text.includes(rule));
+    });
   }
 
   let autosaveTimer = null;
@@ -600,6 +805,7 @@
         settings = await cue.settingsSet(settings);
         showSaved();
         updateReadinessChecklist();
+        syncStyleChipsToRules();
       } catch (_) { /* keep local */ }
     }, 400);
   }
@@ -638,7 +844,7 @@
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', autosave);
   }
-  $('#ai-rules').addEventListener('input', () => { updateAiRulesCounter(); autosave(); });
+  $('#ai-rules').addEventListener('input', () => { updateAiRulesCounter(); syncStyleChipsToRules(); autosave(); });
 
   function updateAiRulesCounter() {
     const el = $('#ai-rules-count');
@@ -888,9 +1094,46 @@
     }
   });
 
+  function showDashboardConfirm(message) {
+    return new Promise((resolve) => {
+      let modal = $('#dash-confirm-modal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'dash-confirm-modal';
+        modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:9999;';
+        modal.innerHTML = `
+          <div style="background:var(--bg-card);border:1px solid var(--glass-line);padding:24px;border-radius:14px;max-width:380px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.8);">
+            <div id="dcm-msg" style="color:#fff;font-size:13px;line-height:1.5;margin-bottom:18px;"></div>
+            <div style="display:flex;gap:10px;justify-content:center;">
+              <button id="dcm-cancel" style="background:rgba(255,255,255,0.06);border:1px solid var(--glass-line);color:var(--tx-2);padding:7px 16px;border-radius:8px;cursor:pointer;">Cancel</button>
+              <button id="dcm-ok" style="background:#ef4444;border:none;color:#fff;padding:7px 16px;border-radius:8px;font-weight:600;cursor:pointer;">Delete</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+      modal.querySelector('#dcm-msg').textContent = message;
+      modal.classList.remove('hidden');
+      const okBtn = modal.querySelector('#dcm-ok');
+      const cancelBtn = modal.querySelector('#dcm-cancel');
+      const cleanup = (res) => {
+        modal.classList.add('hidden');
+        okBtn.removeEventListener('click', onOk);
+        cancelBtn.removeEventListener('click', onCancel);
+        resolve(res);
+      };
+      const onOk = () => cleanup(true);
+      const onCancel = () => cleanup(false);
+      okBtn.addEventListener('click', onOk);
+      cancelBtn.addEventListener('click', onCancel);
+    });
+  }
+
   $('#whisper-delete').addEventListener('click', async () => {
     const model = getSelectedWhisperModel();
-    if (!model || !window.confirm(`Delete the ${model.id} model (${formatBytes(model.bytes)}) from this computer?`)) return;
+    if (!model) return;
+    const ok = await showDashboardConfirm(`Delete the ${model.id} model (${formatBytes(model.bytes)}) from this computer?`);
+    if (!ok) return;
     try {
       await cue.whisperModelDelete(model.id);
       $('#whisper-status').textContent = `${model.id} deleted.`;

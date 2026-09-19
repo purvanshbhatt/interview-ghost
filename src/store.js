@@ -54,12 +54,10 @@ const DEFAULTS = {
   // points", "casual tone". Applied to every LLM mode EXCEPT LeetCode (kept
   // strict for coding problems).
   aiRules: '',
-  // Per-mode custom prompts. modePrompts[modeId] is an optional prompt the user
-  // wrote for a specific mode (e.g. a tweaked mock-interview script). When a
-  // non-empty prompt exists for a mode, it replaces that mode's built-in
-  // instruction in the live agent (the interview context block + AI rules are
-  // still applied on top; the recent transcript is still sent as context).
+  // Per-mode custom prompts. modePrompts[modeId] or customPrompts[modeId]
+  // is an optional prompt the user wrote for a specific mode.
   modePrompts: {},
+  customPrompts: {},
   // Window position
   windowX: null,
   windowY: null,
@@ -127,6 +125,8 @@ function load() {
 
 function save() {
   try {
+    const dir = path.dirname(GHOST_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(GHOST_FILE, JSON.stringify(data, null, 2));
   } catch (e) {
     /* ignore */
@@ -140,7 +140,11 @@ module.exports = {
   setSettings(patch) {
     load();
     const nextSettings = deepMerge(data, patch || {});
-    nextSettings.baseUrl = normalizeBaseUrl(nextSettings.baseUrl);
+    try {
+      nextSettings.baseUrl = normalizeBaseUrl(nextSettings.baseUrl);
+    } catch (_) {
+      // Do not crash the entire process if an incomplete URL is entered during typing
+    }
     data = nextSettings;
     save();
     return data;

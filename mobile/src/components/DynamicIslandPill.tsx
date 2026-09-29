@@ -78,7 +78,7 @@ export const DynamicIslandPill: React.FC<DynamicIslandPillProps> = ({
                 style={[styles.pillBtn, styles.primaryPill]}
                 onPress={() => onTriggerMode('say')}
               >
-                <AppIcon name="bolt" size={13} color={styles.primaryPillText.color} />
+                <AppIcon name="bolt" size={13} color="#FFFFFF" />
                 <Text style={styles.primaryPillText}> Say</Text>
               </TouchableOpacity>
               <TouchableOpacity

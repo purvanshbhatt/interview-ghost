@@ -10,6 +10,33 @@ export interface AudioCaptureCallbacks {
 /** Length of each recorded chunk fed to STT, in seconds. */
 const SEGMENT_SECONDS = 12;
 
+const HIGH_QUALITY_PRESET: any = (Audio as any).RecordingOptionsPresets?.HIGH_QUALITY || {
+  isMeteringEnabled: true,
+  android: {
+    extension: '.m4a',
+    outputFormat: 2, // MPEG_4
+    audioEncoder: 3, // AAC
+    sampleRate: 44100,
+    numberOfChannels: 2,
+    bitRate: 128000,
+  },
+  ios: {
+    extension: '.m4a',
+    outputFormat: 'aac ',
+    audioQuality: 127,
+    sampleRate: 44100,
+    numberOfChannels: 2,
+    bitRate: 128000,
+    linearPCMBitDepth: 16,
+    linearPCMIsBigEndian: false,
+    linearPCMIsFloat: false,
+  },
+  web: {
+    mimeType: 'audio/webm',
+    bitsPerSecond: 128000,
+  },
+};
+
 export class MobileAudioCapture {
   private static globalLock: Promise<void> = Promise.resolve();
   private recording: Audio.Recording | null = null;
@@ -28,25 +55,33 @@ export class MobileAudioCapture {
     }
   }
 
+  private async configureAudioMode(isRecording: boolean): Promise<void> {
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: isRecording,
+        interruptionModeIOS: (Audio.InterruptionModeIOS?.MixWithOthers ?? 0),
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        interruptionModeAndroid: (Audio.InterruptionModeAndroid?.DuckOthers ?? 2),
+        shouldDuckAndroid: isRecording,
+        playThroughEarpieceAndroid: false,
+      });
+    } catch (e: any) {
+      console.warn('[AudioCapture] setAudioModeAsync notice:', e?.message || e);
+    }
+  }
+
   private async prepareAndStart(): Promise<Audio.Recording> {
     // Wait for any prior teardown across any instance to fully finish
     await MobileAudioCapture.globalLock;
 
     try {
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
+      const { recording } = await Audio.Recording.createAsync(HIGH_QUALITY_PRESET);
       return recording;
     } catch (err: any) {
-      // If a stale native recorder exists from an unexpected interruption, attempt reset
-      try {
-        const dummy = new Audio.Recording();
-        await dummy.stopAndUnloadAsync().catch(() => {});
-      } catch {}
-
-      // Fallback: direct prepare using universal high quality preset
+      // Fallback: direct prepare using high quality preset
       const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      await recording.prepareToRecordAsync(HIGH_QUALITY_PRESET);
       await recording.startAsync();
       return recording;
     }
@@ -62,13 +97,7 @@ export class MobileAudioCapture {
         throw new Error('Microphone permission not granted.');
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
-      });
+      await this.configureAudioMode(true);
 
       this.recording = await this.prepareAndStart();
       this.isCapturing = true;
@@ -95,13 +124,7 @@ export class MobileAudioCapture {
         throw new Error('Microphone permission not granted.');
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
-      });
+      await this.configureAudioMode(true);
     } catch (err: any) {
       callbacks?.onError?.(err instanceof Error ? err : new Error(String(err)));
       return false;
@@ -189,16 +212,8 @@ export class MobileAudioCapture {
         }
       }
 
-      // Reset audio mode to prevent holding Android microphone focus
-      try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: false,
-          shouldDuckAndroid: false,
-          playThroughEarpieceAndroid: false,
-        });
-      } catch {}
+      // Reset audio mode to prevent holding microphone focus
+      await this.configureAudioMode(false);
 
       // Safe settle buffer on Android for MediaRecorder hardware release
       if (Platform.OS === 'android') {

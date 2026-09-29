@@ -1,4 +1,5 @@
-import { fetch } from 'expo/fetch';
+// In React Native / Expo environments, use native globalThis.fetch
+const nativeFetch: typeof fetch = typeof fetch !== 'undefined' ? fetch : (globalThis as any).fetch;
 import { AppSettings, ModeId, Turn } from '../types';
 import { buildSystemPrompt, formatTranscript } from './prompts';
 import { buildInterviewContext } from './context-builder';
@@ -71,7 +72,7 @@ async function nonStreamingFallback(
   args: { endpoint: string; headers: Record<string, string>; body: any }
 ): Promise<void> {
   const { onToken, onDone } = options;
-  const response = await fetch(args.endpoint, {
+  const response = await nativeFetch(args.endpoint, {
     method: 'POST',
     headers: args.headers,
     body: JSON.stringify({ ...args.body, stream: undefined }),
@@ -140,7 +141,7 @@ export async function streamLLMResponse(options: StreamLLMOptions): Promise<void
         temperature: 0.3,
       };
 
-      const response = await fetch(endpoint, {
+      const response = await nativeFetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -157,7 +158,7 @@ export async function streamLLMResponse(options: StreamLLMOptions): Promise<void
       }
 
       const contentType = response.headers.get('content-type') || '';
-      if (response.body && contentType.includes('event-stream')) {
+      if (response.body && typeof (response.body as any).getReader === 'function' && contentType.includes('event-stream')) {
         const full = await consumeSSEStream(
           response.body as unknown as ReadableStream<Uint8Array>,
           (json) => json.choices?.[0]?.delta?.content || '',
@@ -179,7 +180,7 @@ export async function streamLLMResponse(options: StreamLLMOptions): Promise<void
         ':streamGenerateContent?alt=sse&key=' +
         apiKey;
 
-      const response = await fetch(base, {
+      const response = await nativeFetch(base, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -195,17 +196,25 @@ export async function streamLLMResponse(options: StreamLLMOptions): Promise<void
         throw new Error(errJson.error?.message || 'Gemini API error (' + response.status + ')');
       }
 
-      const full = await consumeSSEStream(
-        response.body as unknown as ReadableStream<Uint8Array>,
-        (json) => json.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '',
-        onToken
-      );
-      onDone(full);
+      const contentType = response.headers.get('content-type') || '';
+      if (response.body && typeof (response.body as any).getReader === 'function' && contentType.includes('event-stream')) {
+        const full = await consumeSSEStream(
+          response.body as unknown as ReadableStream<Uint8Array>,
+          (json) => json.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '',
+          onToken
+        );
+        onDone(full);
+      } else {
+        const data = await response.json();
+        const answer = data.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '';
+        if (answer) onToken(answer);
+        onDone(answer);
+      }
     } else if (provider === 'anthropic') {
       const model = settings.models?.anthropic?.fast || 'claude-3-5-haiku-latest';
       const endpoint = 'https://api.anthropic.com/v1/messages';
 
-      const response = await fetch(endpoint, {
+      const response = await nativeFetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -228,7 +237,7 @@ export async function streamLLMResponse(options: StreamLLMOptions): Promise<void
       }
 
       const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('event-stream')) {
+      if (response.body && typeof (response.body as any).getReader === 'function' && contentType.includes('event-stream')) {
         const full = await consumeSSEStream(
           response.body as unknown as ReadableStream<Uint8Array>,
           (json) =>

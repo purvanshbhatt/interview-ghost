@@ -36,8 +36,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for file in main.js preload.js electron-builder.cjs renderer/*.js src/*.js scripts/*.js test/*.js; do
-            node --check "$file"
+          for file in main.js preload.js electron-builder.cjs renderer/*.js src/*.js scripts/*.js test/*.js test/*.mjs; do
+            [ -f "$file" ] && node --check "$file"
           done
 
       - name: Run tests

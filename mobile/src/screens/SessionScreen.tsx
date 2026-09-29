@@ -164,7 +164,7 @@ export const SessionScreen: React.FC<SessionScreenProps> = ({ mode: initialMode,
   };
 
   const topInset = Math.max(
-    insets.top,
+    insets?.top || 0,
     Platform.OS === 'android' ? (RNStatusBar.currentHeight || 28) : 20
   );
 
@@ -294,7 +294,7 @@ export const SessionScreen: React.FC<SessionScreenProps> = ({ mode: initialMode,
           {
             backgroundColor: Theme.colors.surfaceContainer,
             borderTopColor: Theme.colors.outlineVariant,
-            paddingBottom: Math.max(insets.bottom, 12),
+            paddingBottom: Math.max(insets?.bottom || 0, 12),
           },
         ]}
       >

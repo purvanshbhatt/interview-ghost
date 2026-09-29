@@ -39,11 +39,11 @@ jobs:
 
       - name: Build macOS
         if: matrix.os == 'macos-latest'
-        run: npm run dist
+        run: npm run dist:mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # electron-builder.cjs signs and notarizes only when MAC_SIGN=1; without
-          # these it still builds ad-hoc, so the job keeps working as a build check.
+          # these it builds ad-hoc, producing installable DMG and ZIP assets.
           MAC_SIGN: ${{ secrets.CSC_LINK != '' && '1' || '' }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
@@ -68,9 +68,6 @@ jobs:
           GHOST_BUNDLE_WHISPER: '1'
 
       - name: Upload to GitHub Release
-        # Skipped on macOS until signing is configured, so an ad-hoc build can
-        # never replace a signed asset already attached to the release.
-        if: matrix.os != 'macos-latest' || env.MAC_SIGNING_CONFIGURED == 'true'
         uses: softprops/action-gh-release@v2
         with:
           files: |
@@ -107,10 +104,12 @@ jobs:
           npm ci || npm install --legacy-peer-deps
 
       - name: Build Android APK
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
         run: |
           cd mobile/android
           chmod +x gradlew
-          ./gradlew assembleRelease || ./gradlew assembleDebug
+          ./gradlew assembleRelease --no-daemon || ./gradlew assembleDebug --no-daemon
           mkdir -p ../../dist
           find app/build/outputs/apk/ -name "*.apk" -exec cp {} ../../dist/ghost-mobile-release.apk \;
 
@@ -118,6 +117,49 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/ghost-mobile-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  mobile-ios:
+    name: Build iOS App
+    runs-on: macos-latest
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Mobile Dependencies
+        run: |
+          cd mobile
+          npm ci || npm install --legacy-peer-deps
+
+      - name: Install CocoaPods
+        run: |
+          cd mobile/ios
+          pod install
+
+      - name: Build iOS App
+        run: |
+          cd mobile/ios
+          xcodebuild -workspace Ghost.xcworkspace \
+            -scheme Ghost \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+          mkdir -p ../../dist
+          cd build/Build/Products/Release-iphonesimulator
+          zip -r ../../../../../dist/Ghost-iOS-Simulator.zip Ghost.app
+
+      - name: Upload iOS App to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Ghost-iOS-Simulator.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

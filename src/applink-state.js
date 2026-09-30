@@ -58,15 +58,15 @@ function consentCopy(request) {
 
   return {
     trusted,
-    message: action ? `${who} wants to control cue.` : `${who} wants to see what cue is doing.`,
+    message: action ? `${who} wants to control Ghost.` : `${who} wants to see what Ghost is doing.`,
     detail:
       (action
         ? 'It would be able to start and stop listening. '
-        : 'It would be able to read cue’s status, recent warnings and errors — never your transcript, your résumé or your API keys. ') +
+        : 'It would be able to read Ghost’s status, recent warnings and errors — never your transcript, your résumé or your API keys. ') +
       (trusted
         ? 'Its code signature has been verified.'
-        : 'cue cannot verify what this program really is; anything running under your account could make the same claim.') +
-      '\n\nYou can change this later in cue’s settings.',
+        : 'Ghost cannot verify what this program really is; anything running under your account could make the same claim.') +
+      '\n\nYou can change this later in Ghost’s settings.',
     allowLabel: action ? 'Allow control' : 'Allow',
   };
 }

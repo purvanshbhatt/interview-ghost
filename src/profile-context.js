@@ -10,7 +10,7 @@ const MAX_AI_RULES_CHARS = 2000;
 /**
  * Adds a résumé as data-only context without changing prompts for users who have not supplied one.
  *
- * @param {string} systemPrompt The mode-specific prompt cue would otherwise send.
+ * @param {string} systemPrompt The mode-specific prompt Ghost would otherwise send.
  * @param {unknown} resumeContext The locally saved résumé text.
  * @returns {string} The prompt, optionally grounded in the supplied résumé.
  */
@@ -43,7 +43,7 @@ function appendResumeContext(systemPrompt, resumeContext) {
  * Applied to every mode EXCEPT LeetCode (kept strict for coding problems) —
  * the caller decides whether to skip it.
  *
- * @param {string} systemPrompt The mode-specific prompt cue would otherwise send.
+ * @param {string} systemPrompt The mode-specific prompt Ghost would otherwise send.
  * @param {unknown} aiRules The user's locally-saved rules text.
  * @returns {string} The prompt, with the rules appended when non-empty.
  */

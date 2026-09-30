@@ -1,7 +1,7 @@
 // Android Device & Phone Call Bridge
 // Integrates with the ndroid CLI and db platform tools to detect connected
 // devices, capture phone screens during live phone interviews/calls, and bridge
-// mobile workflows into cue.
+// mobile workflows into Ghost.
 
 const { execFile } = require('child_process');
 const path = require('path');

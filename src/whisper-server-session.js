@@ -29,7 +29,7 @@ async function findFreeLoopbackPort() {
 }
 
 function buildMultipartBody(wav) {
-  const boundary = `cue-${crypto.randomBytes(16).toString('hex')}`;
+  const boundary = `ghost-${crypto.randomBytes(16).toString('hex')}`;
   const fields = [
     `--${boundary}\r\nContent-Disposition: form-data; name="response_format"\r\n\r\njson\r\n`,
     `--${boundary}\r\nContent-Disposition: form-data; name="temperature"\r\n\r\n0.0\r\n`,
@@ -98,7 +98,7 @@ class WhisperServerSession {
     ]);
 
     const port = await this.findPort();
-    const requestPath = `/cue-${this.randomBytes(24).toString('hex')}`;
+    const requestPath = `/ghost-${this.randomBytes(24).toString('hex')}`;
     this.endpoint = `http://${LOOPBACK_HOST}:${port}${requestPath}/inference`;
     this.healthEndpoint = `http://${LOOPBACK_HOST}:${port}${requestPath}/health`;
     const argumentsList = this._buildArguments(port, requestPath);

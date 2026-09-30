@@ -32,7 +32,7 @@ function snapshot(overrides = {}) {
   };
 }
 
-test('reports what cue is doing', () => {
+test('reports what Ghost is doing', () => {
   const state = describeState(snapshot());
   assert.equal(state.capturing, true);
   assert.equal(state.transcribing.them, true);
@@ -44,7 +44,7 @@ test('reports what cue is doing', () => {
 });
 
 /**
- * The one test in this file that matters more than the others. cue's transcript
+ * The one test in this file that matters more than the others. Ghost's transcript
  * is a recording of people who never agreed to share it, and the résumé and the
  * keys are the user's. If any of them ever appear in this object they are one
  * `capture_diagnostics` away from a bug report.
@@ -82,29 +82,29 @@ test('hedges the consent sheet when the caller cannot be verified', () => {
   assert.equal(unverified.trusted, false);
 
   const verified = consentCopy({ callerName: 'Iris', scope: 'read', verification: 'code-signature' });
-  assert.equal(verified.message, 'Iris wants to see what cue is doing.');
+  assert.equal(verified.message, 'Iris wants to see what Ghost is doing.');
   assert.match(verified.detail, /signature has been verified/);
 });
 
 test('asks separately, and differently, for control', () => {
   const copy = consentCopy({ callerName: 'Iris', scope: 'action', verification: 'token' });
-  assert.match(copy.message, /wants to control cue/);
+  assert.match(copy.message, /wants to control Ghost/);
   assert.equal(copy.allowLabel, 'Allow control');
 });
 
 /**
  * End to end over a real socket, without Electron: discovery, consent, and the
- * three questions Iris actually asks when someone says cue is broken.
+ * three questions Iris actually asks when someone says Ghost is broken.
  */
 test('answers Iris over the link', async (t) => {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'cue-applink-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'ghost-applink-'));
   const pathOptions = { homedir: home, env: { ...process.env, LOCALAPPDATA: path.join(home, 'Local') }, uid: 'test-' + Date.now() };
 
   let asked = 0;
   const link = new AppLinkServer({
-    appId: 'com.cue.overlay',
-    appSlug: 'cue',
-    appName: 'cue',
+    appId: 'com.ghost.overlay',
+    appSlug: 'ghost',
+    appName: 'ghost',
     appVersion: '0.2.1',
     pathOptions,
     stateProvider: () => describeState(snapshot({ sttDisabled: true })),
@@ -115,8 +115,8 @@ test('answers Iris over the link', async (t) => {
 
   link.record({ level: 'error', event: 'stt_rejected', code: 'http_403', msg: 'no access to a speech model', frame: 'handleSttError' });
 
-  const found = AppLinkClient.discover(pathOptions).find((entry) => entry.appId === 'com.cue.overlay');
-  assert.ok(found, 'cue did not announce itself');
+  const found = AppLinkClient.discover(pathOptions).find((entry) => entry.appId === 'com.ghost.overlay');
+  assert.ok(found, 'ghost did not announce itself');
 
   const client = await AppLinkClient.open(found, { client: { id: 'com.publikhq.iris', name: 'Iris' }, scopes: ['read'] });
   t.after(() => client.close());
@@ -132,7 +132,7 @@ test('answers Iris over the link', async (t) => {
   assert.equal(event.frame, 'handleSttError');
 
   const bundle = await client.captureDiagnostics();
-  assert.equal(bundle.app.slug, 'cue');
+  assert.equal(bundle.app.slug, 'ghost');
   assert.equal(bundle.lastError.msg, 'no access to a speech model');
   // Same guarantee as above, now through the wire rather than the function.
   const wire = JSON.stringify(bundle);

@@ -242,7 +242,7 @@ async function prepareWhisperRuntime({
   const cachedRuntimeDirectory = path.join(cacheRoot, target.key);
 
   if (!(await hasCurrentRuntime(cachedRuntimeDirectory, target))) {
-    const temporaryDirectory = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'cue-whisper-runtime-'));
+    const temporaryDirectory = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'ghost-whisper-runtime-'));
     const preparedDirectory = path.join(temporaryDirectory, 'prepared');
     try {
       if (target.kind === 'archive') {

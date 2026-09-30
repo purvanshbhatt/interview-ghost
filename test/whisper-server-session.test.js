@@ -66,7 +66,7 @@ test('loads one server process and reuses it for multiple in-memory inferences',
   assert.equal(await session.transcribe(Buffer.alloc(3200)), 'hello locally');
   assert.equal(spawnCalls.length, 1);
   assert.equal(fetchCalls.filter((call) => call.options.method === 'POST').length, 2);
-  assert.ok(fetchCalls.every((call) => call.url.startsWith('http://127.0.0.1:43123/cue-')));
+  assert.ok(fetchCalls.every((call) => call.url.startsWith('http://127.0.0.1:43123/ghost-')));
 
   await session.stop();
   assert.deepEqual(child.killSignals, ['SIGTERM']);
@@ -74,7 +74,7 @@ test('loads one server process and reuses it for multiple in-memory inferences',
 
 test('builds a WAV multipart request entirely in memory', () => {
   const multipart = buildMultipartBody(Buffer.from('RIFFfixture'));
-  assert.match(multipart.boundary, /^cue-[a-f0-9]+$/);
+  assert.match(multipart.boundary, /^ghost-[a-f0-9]+$/);
   assert.ok(multipart.body.includes(Buffer.from('filename="audio.wav"')));
   assert.ok(multipart.body.includes(Buffer.from('RIFFfixture')));
 });

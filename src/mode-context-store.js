@@ -23,7 +23,7 @@ const MAX_EXTRACTED_TEXT_CHARS = 200_000; // ~50k tokens of headroom per file
 const VALID_MODE_RE = /^[a-z][a-z0-9_-]{0,31}$/;
 
 // Basename that splits on both separators. path.basename alone leaks full
-// Windows paths ("C:\Users\me\Resume.docx") when cue runs on Linux, because
+// Windows paths ("C:\Users\me\Resume.docx") when Ghost runs on Linux, because
 // backslash is not a separator there.
 function baseName(name) {
   const s = String(name);

@@ -103,8 +103,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const settings = {
       provider: providerSelect.value,
       geminiApiKey: geminiApiKey.value.trim(),
-      geminiModelFast: geminiModelFast.value.trim() || 'gemini-2.5-flash',
-      geminiModelSmart: geminiModelSmart.value.trim() || 'gemini-2.5-pro',
+      geminiModelFast: geminiModelFast.value.trim() || 'gemini-3.8-flash',
+      geminiModelSmart: geminiModelSmart.value.trim() || 'gemini-3.8-flash',
 
       openaiApiKey: openaiApiKey.value.trim(),
       openaiModelFast: openaiModelFast.value.trim() || 'gpt-4o-mini',

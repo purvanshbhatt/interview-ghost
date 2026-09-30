@@ -58,4 +58,7 @@ export interface AppSettings {
   aiRules?: string;
   saveTranscripts?: boolean;
   floatingOverlayEnabled?: boolean;
+  language?: string;
+  liveTranslate?: boolean;
+  targetLanguage?: string;
 }

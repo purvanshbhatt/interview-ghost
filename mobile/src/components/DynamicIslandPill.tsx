@@ -43,7 +43,7 @@ export const DynamicIslandPill: React.FC<DynamicIslandPillProps> = ({
         <View style={styles.compactRow}>
           <View style={styles.leftGroup}>
             <View style={[styles.micDot, isListening && styles.micDotActive]} />
-            <Text style={styles.islandTitle}>Cue</Text>
+            <Text style={styles.islandTitle}>Ghost</Text>
             <View style={styles.modeBadge}>
               <Text style={styles.modeText}>{mode.toUpperCase()}</Text>
             </View>

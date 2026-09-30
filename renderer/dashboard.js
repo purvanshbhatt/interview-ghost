@@ -626,6 +626,27 @@
     }
   }
 
+  const copyPastTranscriptBtn = $('#copy-past-transcript-btn');
+  if (copyPastTranscriptBtn) {
+    copyPastTranscriptBtn.addEventListener('click', async () => {
+      if (body && body.textContent) {
+        try {
+          await navigator.clipboard.writeText(body.textContent);
+          showToast('✓ Transcript copied to clipboard!', 1500);
+        } catch {
+          showToast('Could not copy to clipboard', 1500);
+        }
+      }
+    });
+  }
+
+  const closePastViewBtn = $('#close-past-view-btn');
+  if (closePastViewBtn) {
+    closePastViewBtn.addEventListener('click', () => {
+      viewPane.classList.add('hidden');
+    });
+  }
+
   cue.on('transcripts:changed', () => loadPastSessionsList());
 
   // ---- settings drawer & sync --------------------------------------------
@@ -690,6 +711,12 @@
     $('#questions-to-ask').value = settings.questionsToAsk || '';
     const toggle = $('#save-transcripts-toggle');
     if (toggle) toggle.checked = settings.saveTranscripts !== false;
+    const audioLangEl = $('#audio-language-select');
+    if (audioLangEl) audioLangEl.value = settings.language || 'auto';
+    const liveTranslateEl = $('#live-translate-toggle');
+    if (liveTranslateEl) liveTranslateEl.checked = Boolean(settings.liveTranslate);
+    const targetLangEl = $('#target-language-select');
+    if (targetLangEl) targetLangEl.value = settings.targetLanguage || 'en';
     updateReadinessChecklist();
   }
 
@@ -732,6 +759,12 @@
     settings.questionsToAsk = getVal('questions-to-ask');
     const toggle = $('#save-transcripts-toggle');
     if (toggle) settings.saveTranscripts = toggle.checked;
+    const audioLangEl = $('#audio-language-select');
+    if (audioLangEl) settings.language = audioLangEl.value;
+    const liveTranslateEl = $('#live-translate-toggle');
+    if (liveTranslateEl) settings.liveTranslate = liveTranslateEl.checked;
+    const targetLangEl = $('#target-language-select');
+    if (targetLangEl) settings.targetLanguage = targetLangEl.value;
   }
 
   // Explicit Save button in Drawer
@@ -838,13 +871,23 @@
     'base-url', 'key-ollama', 'key-groq', 'key-minimax', 'key-azure',
     'azure-endpoint', 'model-fast', 'model-smart', 'whisper-language', 'whisper-threads',
     'resume-text', 'job-description', 'star-stories', 'why-company', 'why-leaving',
-    'work-style', 'ai-rules', 'salary-target', 'questions-to-ask'
+    'work-style', 'ai-rules', 'salary-target', 'questions-to-ask',
+    'audio-language-select', 'target-language-select'
   ];
   for (const id of autosaveFields) {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', autosave);
+    if (el && el.tagName === 'SELECT') el.addEventListener('change', autosave);
   }
   $('#ai-rules').addEventListener('input', () => { updateAiRulesCounter(); syncStyleChipsToRules(); autosave(); });
+
+  const liveTranslateToggle = $('#live-translate-toggle');
+  if (liveTranslateToggle) {
+    liveTranslateToggle.addEventListener('change', (e) => {
+      cue.settingsSet({ liveTranslate: e.target.checked });
+      autosave();
+    });
+  }
 
   function updateAiRulesCounter() {
     const el = $('#ai-rules-count');
@@ -855,6 +898,45 @@
   if (saveTranscriptsToggle) {
     saveTranscriptsToggle.addEventListener('change', (e) => {
       cue.settingsSet({ saveTranscripts: e.target.checked });
+    });
+  }
+
+  const checkUpdatesBtn = $('#check-updates-btn');
+  const updateStatusMsg = $('#update-status-msg');
+  if (checkUpdatesBtn) {
+    checkUpdatesBtn.addEventListener('click', async () => {
+      checkUpdatesBtn.disabled = true;
+      checkUpdatesBtn.textContent = 'Checking…';
+      if (updateStatusMsg) {
+        updateStatusMsg.style.display = 'block';
+        updateStatusMsg.textContent = 'Contacting GitHub API…';
+      }
+      try {
+        const resp = await fetch('https://api.github.com/repos/purvanshbhatt/interview-ghost/commits/main', {
+          headers: { 'User-Agent': 'Ghost-Desktop' }
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          const shortSha = (data.sha || '').substring(0, 7);
+          const msg = (data.commit && data.commit.message && data.commit.message.split('\n')[0]) || '';
+          const date = new Date(data.commit?.author?.date || '').toLocaleDateString();
+          updateStatusMsg.innerHTML = '<strong>Latest GitHub Commit:</strong> <code>' + shortSha + '</code> (' + date + ')<br>"' + textEscape(msg) + '"<br><span style="color:#4ade80;">✓ Client is synchronized with repository.</span>';
+        } else {
+          updateStatusMsg.textContent = 'Connected to purvanshbhatt/interview-ghost.';
+        }
+      } catch (err) {
+        updateStatusMsg.textContent = 'Could not reach GitHub API. Check internet connection.';
+      } finally {
+        checkUpdatesBtn.disabled = false;
+        checkUpdatesBtn.textContent = 'Check for Updates';
+      }
+    });
+  }
+
+  const openReleasesBtn = $('#open-github-releases-btn');
+  if (openReleasesBtn) {
+    openReleasesBtn.addEventListener('click', () => {
+      window.open('https://github.com/purvanshbhatt/interview-ghost/releases', '_blank');
     });
   }
 

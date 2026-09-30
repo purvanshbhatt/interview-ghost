@@ -104,7 +104,7 @@ const {
 
 test('exports complete DEFAULT_FAST_MODELS and DEFAULT_SMART_MODELS for all 8 providers', () => {
   const expectedFast = {
-    gemini: 'gemini-2.5-flash',
+    gemini: 'gemini-3.8-flash',
     openai: 'gpt-4o-mini',
     anthropic: 'claude-3-5-haiku-latest',
     groq: 'llama-3.1-8b-instant',
@@ -115,7 +115,7 @@ test('exports complete DEFAULT_FAST_MODELS and DEFAULT_SMART_MODELS for all 8 pr
   };
 
   const expectedSmart = {
-    gemini: 'gemini-2.5-flash',
+    gemini: 'gemini-3.8-flash',
     openai: 'gpt-4o',
     anthropic: 'claude-3-5-sonnet-latest',
     groq: 'llama-3.3-70b-versatile',
@@ -136,7 +136,7 @@ test('exports complete DEFAULT_FAST_MODELS and DEFAULT_SMART_MODELS for all 8 pr
 
 test('resolves default Fast and Smart models correctly across all 8 providers', () => {
   const providers = [
-    { provider: 'gemini', fast: 'gemini-2.5-flash', smart: 'gemini-2.5-flash', extra: { apiKeys: { gemini: 'k' } } },
+    { provider: 'gemini', fast: 'gemini-3.8-flash', smart: 'gemini-3.8-flash', extra: { apiKeys: { gemini: 'k' } } },
     { provider: 'openai', fast: 'gpt-4o-mini', smart: 'gpt-4o', extra: { apiKeys: { openai: 'k' } } },
     { provider: 'anthropic', fast: 'claude-3-5-haiku-latest', smart: 'claude-3-5-sonnet-latest', extra: { apiKeys: { anthropic: 'k' } } },
     { provider: 'groq', fast: 'llama-3.1-8b-instant', smart: 'llama-3.3-70b-versatile', extra: { apiKeys: { groq: 'k' } } },
@@ -396,8 +396,8 @@ test('Gemini: configured smart model 404 gracefully falls back to fast model', a
   const attempts = [];
   mockGeminiHandler = (clientOptions, req) => {
     attempts.push({ model: req.model, maxOutputTokens: req.config?.maxOutputTokens });
-    if (req.model === 'gemini-2.5-pro') {
-      const err = new Error('got status: 404 Not Found. {"error":{"code":404,"message":"models/gemini-2.5-pro is not found"}}');
+    if (attempts.length === 1) {
+      const err = new Error('got status: 404 Not Found. {"error":{"code":404,"message":"models/gemini-3.8-flash is not found"}}');
       err.status = 404;
       throw err;
     }
@@ -409,10 +409,10 @@ test('Gemini: configured smart model 404 gracefully falls back to fast model', a
     provider: 'gemini',
     smart: true,
     apiKeys: { gemini: 'gemini-key' },
-    models: { gemini: { fast: 'gemini-2.5-flash', smart: 'gemini-2.5-pro' } }
+    models: { gemini: { fast: 'gemini-3.5-flash-lite', smart: 'gemini-3.8-flash' } }
   });
 
-  assert.equal(llm.model, 'gemini-2.5-pro');
+  assert.equal(llm.model, 'gemini-3.8-flash');
   const result = await llm.stream({
     system: 'sys',
     turns: [{ role: 'user', text: 'hello' }],
@@ -422,9 +422,9 @@ test('Gemini: configured smart model 404 gracefully falls back to fast model', a
   assert.equal(result, 'gemini-healed');
   assert.deepEqual(tokens, ['gemini-healed']);
   assert.equal(attempts.length, 2);
-  assert.equal(attempts[0].model, 'gemini-2.5-pro');
+  assert.equal(attempts[0].model, 'gemini-3.8-flash');
   assert.equal(attempts[0].maxOutputTokens, 1400);
-  assert.equal(attempts[1].model, 'gemini-2.5-flash');
+  assert.equal(attempts[1].model, 'gemini-3.5-flash-lite');
   assert.equal(attempts[1].maxOutputTokens, 700);
 });
 
@@ -628,7 +628,7 @@ test('Gemini: configured smart model 429 quota exhaustion gracefully falls back 
   const attempts = [];
   mockGeminiHandler = (clientOptions, req) => {
     attempts.push({ model: req.model, maxOutputTokens: req.config?.maxOutputTokens });
-    if (req.model === 'gemini-2.5-pro') {
+    if (attempts.length === 1) {
       const err = new Error('got status: 429 Too Many Requests. {"error":{"code":429,"message":"Resource has been exhausted","status":"RESOURCE_EXHAUSTED"}}');
       err.status = 429;
       throw err;
@@ -641,7 +641,7 @@ test('Gemini: configured smart model 429 quota exhaustion gracefully falls back 
     provider: 'gemini',
     smart: true,
     apiKeys: { gemini: 'gemini-key' },
-    models: { gemini: { fast: 'gemini-2.5-flash', smart: 'gemini-2.5-pro' } }
+    models: { gemini: { fast: 'gemini-3.5-flash-lite', smart: 'gemini-3.8-flash' } }
   });
 
   const result = await llm.stream({
@@ -653,8 +653,8 @@ test('Gemini: configured smart model 429 quota exhaustion gracefully falls back 
   assert.equal(result, 'gemini-quota-healed');
   assert.deepEqual(tokens, ['gemini-quota-healed']);
   assert.equal(attempts.length, 2);
-  assert.equal(attempts[0].model, 'gemini-2.5-pro');
-  assert.equal(attempts[1].model, 'gemini-2.5-flash');
+  assert.equal(attempts[0].model, 'gemini-3.8-flash');
+  assert.equal(attempts[1].model, 'gemini-3.5-flash-lite');
   assert.equal(attempts[1].maxOutputTokens, 700);
 });
 

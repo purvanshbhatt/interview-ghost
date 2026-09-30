@@ -136,8 +136,8 @@ test('storage defaults contain all required fields for multi-provider copilot', 
   assert.equal(settings.activeMode, 'assist');
   assert.equal(settings.smart, false);
   assert.equal(settings.sttEngine, 'webspeech');
-  assert.equal(settings.geminiModelFast, 'gemini-2.5-flash');
-  assert.equal(settings.geminiModelSmart, 'gemini-2.5-pro');
+  assert.equal(settings.geminiModelFast, 'gemini-3.8-flash');
+  assert.equal(settings.geminiModelSmart, 'gemini-3.8-flash');
   assert.equal(settings.openaiModelFast, 'gpt-4o-mini');
   assert.equal(settings.anthropicModelFast, 'claude-3-5-haiku-20241022');
   assert.equal(settings.groqModelFast, 'llama-3.3-70b-versatile');
@@ -240,8 +240,8 @@ test('buildSystemPrompt omits aiRules for code mode to ensure strict algorithmic
 // =============================================================================
 
 test('resolveModel returns correct fast and smart tier models across all providers', () => {
-  assert.equal(resolveModel({ provider: 'gemini', smart: false }), 'gemini-2.5-flash');
-  assert.equal(resolveModel({ provider: 'gemini', smart: true }), 'gemini-2.5-pro');
+  assert.equal(resolveModel({ provider: 'gemini', smart: false }), 'gemini-3.8-flash');
+  assert.equal(resolveModel({ provider: 'gemini', smart: true }), 'gemini-3.8-flash');
 
   assert.equal(resolveModel({ provider: 'openai', smart: false }), 'gpt-4o-mini');
   assert.equal(resolveModel({ provider: 'openai', smart: true }), 'gpt-4o');
@@ -268,11 +268,11 @@ test('streamLLM triggers self-healing fallback when smart tier encounters 404 or
       return {
         ok: false,
         status: 429,
-        text: async () => 'Rate limit exceeded for model gemini-2.5-pro'
+        text: async () => 'Rate limit exceeded for model gemini-3.8-flash'
       };
     }
     // Second attempt on Fast tier succeeds
-    assert.ok(url.includes('gemini-2.5-flash'), 'Fallback must target fast model');
+    assert.ok(url.includes('gemini-3.8-flash'), 'Fallback must target fast model');
     const sseResponse = 'data: {"candidates":[{"content":{"parts":[{"text":"Self-healed fast answer"}]}}]}\n\n';
     return {
       ok: true,

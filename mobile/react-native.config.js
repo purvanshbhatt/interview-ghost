@@ -28,7 +28,7 @@ module.exports = {
     android: {
       sourceDir: './android',
       appName: 'app',
-      packageName: 'com.cue.interviewhelper',
+      packageName: 'com.ghost.interviewhelper',
     },
   },
   dependencies: ignoredDependencies,

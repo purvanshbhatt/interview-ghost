@@ -60,7 +60,7 @@ function MainApp() {
           ]}
           activeId={activeTab}
           onSelect={(id) => setActiveTab(id as TabId)}
-          header={{ title: 'Cue', subtitle: 'Interview Copilot' }}
+          header={{ title: 'Ghost', subtitle: 'AI Interview & Call Copilot' }}
         />
         <View style={styles.screenArea}>
           {activeTab === 'home' && <HomeScreen onStartSession={(m) => setActiveSessionMode(m)} />}

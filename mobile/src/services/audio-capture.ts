@@ -1,16 +1,25 @@
 import { Audio } from 'expo-av';
 import { Platform } from 'react-native';
+import { CallHelper } from './call-helper';
+import { ModeId } from '../types';
 
 export interface AudioCaptureCallbacks {
   onSpeechDetected?: () => void;
   onSegment?: (uri: string) => void;
   onError?: (error: Error) => void;
+  onAudioLevel?: (level: number, db: number) => void;
 }
 
-/** Length of each recorded chunk fed to STT, in seconds. */
-const SEGMENT_SECONDS = 12;
+export interface AudioCaptureOptions {
+  mode?: ModeId;
+  enableSpeaker?: boolean;
+  showOverlay?: boolean;
+}
 
-const HIGH_QUALITY_PRESET: any = (Audio as any).RecordingOptionsPresets?.HIGH_QUALITY || {
+/** Length of each recorded chunk fed to STT, in seconds. Fast 4s for rapid live transcription. */
+const SEGMENT_SECONDS = 4;
+
+const RECORDING_OPTIONS: any = {
   isMeteringEnabled: true,
   android: {
     extension: '.m4a',
@@ -39,6 +48,8 @@ const HIGH_QUALITY_PRESET: any = (Audio as any).RecordingOptionsPresets?.HIGH_QU
 
 export class MobileAudioCapture {
   private static globalLock: Promise<void> = Promise.resolve();
+  private static activeRecording: Audio.Recording | null = null;
+
   private recording: Audio.Recording | null = null;
   private isCapturing = false;
   private segmentLoopRunning = false;
@@ -48,8 +59,12 @@ export class MobileAudioCapture {
 
   async requestPermissions(): Promise<boolean> {
     try {
-      const { status } = await Audio.requestPermissionsAsync();
-      return status === 'granted';
+      const resp = await Audio.getPermissionsAsync();
+      if (resp.granted || resp.status === 'granted') {
+        return true;
+      }
+      const req = await Audio.requestPermissionsAsync();
+      return req.granted || req.status === 'granted';
     } catch {
       return false;
     }
@@ -59,11 +74,11 @@ export class MobileAudioCapture {
     try {
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: isRecording,
-        interruptionModeIOS: (Audio.InterruptionModeIOS?.MixWithOthers ?? 0),
+        interruptionModeIOS: ((Audio as any).InterruptionModeIOS?.MixWithOthers ?? 0),
         playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-        interruptionModeAndroid: (Audio.InterruptionModeAndroid?.DuckOthers ?? 2),
-        shouldDuckAndroid: isRecording,
+        staysActiveInBackground: true,
+        interruptionModeAndroid: ((Audio as any).InterruptionModeAndroid?.DuckOthers ?? 2),
+        shouldDuckAndroid: false,
         playThroughEarpieceAndroid: false,
       });
     } catch (e: any) {
@@ -71,20 +86,43 @@ export class MobileAudioCapture {
     }
   }
 
-  private async prepareAndStart(): Promise<Audio.Recording> {
+  private async prepareAndStart(callbacks?: AudioCaptureCallbacks): Promise<Audio.Recording> {
     // Wait for any prior teardown across any instance to fully finish
     await MobileAudioCapture.globalLock;
 
-    try {
-      const { recording } = await Audio.Recording.createAsync(HIGH_QUALITY_PRESET);
-      return recording;
-    } catch (err: any) {
-      // Fallback: direct prepare using high quality preset
-      const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync(HIGH_QUALITY_PRESET);
-      await recording.startAsync();
-      return recording;
+    // Safety: ensure any previous active recording is completely stopped and deallocated
+    const prior = MobileAudioCapture.activeRecording || this.recording;
+    if (prior) {
+      try {
+        const st = await prior.getStatusAsync().catch(() => null);
+        if (st && st.canRecord) {
+          await prior.stopAndUnloadAsync().catch(() => {});
+        }
+      } catch {}
+      MobileAudioCapture.activeRecording = null;
+      this.recording = null;
+      await new Promise((r) => setTimeout(r, 120));
     }
+
+    const onStatus = (status: Audio.RecordingStatus) => {
+      if (status.isRecording && typeof status.metering === 'number') {
+        const normalized = Math.max(0, Math.min(1, (status.metering + 55) / 50));
+        callbacks?.onAudioLevel?.(normalized, status.metering);
+        if (normalized > 0.12) {
+          callbacks?.onSpeechDetected?.();
+        }
+      }
+    };
+
+    const { recording } = await Audio.Recording.createAsync(
+      RECORDING_OPTIONS,
+      onStatus,
+      100 // High-frequency 10Hz metering update for responsive visualizer waveform
+    );
+
+    this.recording = recording;
+    MobileAudioCapture.activeRecording = recording;
+    return recording;
   }
 
   /** Continuous capture (no segmentation). Returns success. */
@@ -99,12 +137,13 @@ export class MobileAudioCapture {
 
       await this.configureAudioMode(true);
 
-      this.recording = await this.prepareAndStart();
+      this.recording = await this.prepareAndStart(callbacks);
       this.isCapturing = true;
       return true;
     } catch (err: any) {
       this.isCapturing = false;
       this.recording = null;
+      MobileAudioCapture.activeRecording = null;
       callbacks?.onError?.(err instanceof Error ? err : new Error(String(err)));
       return false;
     }
@@ -115,7 +154,10 @@ export class MobileAudioCapture {
    * completed chunk to onSegment, and immediately starts the next one until
    * stop() is called. This is what feeds live transcription.
    */
-  async startSegmented(callbacks?: AudioCaptureCallbacks): Promise<boolean> {
+  async startSegmented(
+    callbacks?: AudioCaptureCallbacks,
+    options?: AudioCaptureOptions
+  ): Promise<boolean> {
     if (this.segmentLoopRunning) return true;
 
     try {
@@ -125,6 +167,14 @@ export class MobileAudioCapture {
       }
 
       await this.configureAudioMode(true);
+
+      if (Platform.OS === 'android') {
+        await CallHelper.startCallService(
+          options?.mode || 'phoneCall',
+          options?.enableSpeaker ?? false,
+          options?.showOverlay ?? true
+        );
+      }
     } catch (err: any) {
       callbacks?.onError?.(err instanceof Error ? err : new Error(String(err)));
       return false;
@@ -136,7 +186,7 @@ export class MobileAudioCapture {
     const runLoop = async () => {
       while (this.segmentLoopRunning && !this.isStopping) {
         try {
-          const recording = await this.prepareAndStart();
+          const recording = await this.prepareAndStart(callbacks);
           this.recording = recording;
           this.isCapturing = true;
 
@@ -152,22 +202,37 @@ export class MobileAudioCapture {
             return;
           }
 
-          await recording.stopAndUnloadAsync();
+          let uri: string | null = null;
+          try {
+            const st = await recording.getStatusAsync().catch(() => null);
+            if (st && st.canRecord) {
+              await recording.stopAndUnloadAsync();
+              uri = recording.getURI();
+            } else {
+              uri = recording.getURI();
+            }
+          } catch {
+            uri = recording.getURI();
+          }
+
           this.recording = null;
-          const uri = recording.getURI();
+          MobileAudioCapture.activeRecording = null;
+          this.isCapturing = false;
+
           if (uri) callbacks?.onSegment?.(uri);
 
           // Brief settle pause between segments so Android audio HAL resets cleanly
           if (Platform.OS === 'android') {
-            await new Promise((r) => setTimeout(r, 150));
+            await new Promise((r) => setTimeout(r, 200));
           }
         } catch (err: any) {
           this.recording = null;
+          MobileAudioCapture.activeRecording = null;
           this.isCapturing = false;
           if (!this.segmentLoopRunning || this.isStopping) return;
           callbacks?.onError?.(err instanceof Error ? err : new Error(String(err)));
           // Back off briefly before retrying so a hard failure doesn't spin
-          await new Promise((r) => setTimeout(r, 1500));
+          await new Promise((r) => setTimeout(r, 1200));
         }
       }
     };
@@ -192,8 +257,9 @@ export class MobileAudioCapture {
     }
 
     let uri: string | null = null;
-    const currentRec = this.recording;
+    const currentRec = this.recording || MobileAudioCapture.activeRecording;
     this.recording = null;
+    MobileAudioCapture.activeRecording = null;
     this.isCapturing = false;
 
     // Acquire global lock during teardown to prevent concurrent starts
@@ -205,8 +271,13 @@ export class MobileAudioCapture {
     try {
       if (currentRec) {
         try {
-          await currentRec.stopAndUnloadAsync();
-          uri = currentRec.getURI();
+          const st = await currentRec.getStatusAsync().catch(() => null);
+          if (st && st.canRecord) {
+            await currentRec.stopAndUnloadAsync();
+            uri = currentRec.getURI();
+          } else {
+            uri = currentRec.getURI();
+          }
         } catch {
           // Ignore already unloaded
         }
@@ -215,9 +286,9 @@ export class MobileAudioCapture {
       // Reset audio mode to prevent holding microphone focus
       await this.configureAudioMode(false);
 
-      // Safe settle buffer on Android for MediaRecorder hardware release
       if (Platform.OS === 'android') {
-        await new Promise((r) => setTimeout(r, 300));
+        await CallHelper.stopCallService();
+        await new Promise((r) => setTimeout(r, 200));
       }
     } finally {
       this.isStopping = false;
@@ -231,4 +302,3 @@ export class MobileAudioCapture {
     return this.isCapturing || this.segmentLoopRunning;
   }
 }
-

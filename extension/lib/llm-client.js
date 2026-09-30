@@ -8,8 +8,8 @@ import { buildSystemPrompt } from './prompts.js';
 
 export const PROVIDER_MODELS = {
   gemini: {
-    fast: 'gemini-2.5-flash',
-    smart: 'gemini-2.5-pro'
+    fast: 'gemini-3.8-flash',
+    smart: 'gemini-3.8-flash'
   },
   openai: {
     fast: 'gpt-4o-mini',

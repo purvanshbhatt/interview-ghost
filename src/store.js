@@ -61,10 +61,13 @@ const DEFAULTS = {
   // Window position
   windowX: null,
   windowY: null,
+  language: 'auto',
+  liveTranslate: false,
+  targetLanguage: 'en',
   models: {
     openai: { fast: 'gpt-4o-mini', smart: 'gpt-4o' },
     anthropic: { fast: 'claude-3-5-haiku-latest', smart: 'claude-3-5-sonnet-latest' },
-    gemini: { fast: 'gemini-2.5-flash', smart: 'gemini-2.5-flash' },
+    gemini: { fast: 'gemini-3.8-flash', smart: 'gemini-3.8-flash' },
     custom: { fast: '', smart: '' },
     ollama: { fast: 'llama3.2', smart: 'llama3.3' },
     groq: { fast: 'llama-3.1-8b-instant', smart: 'llama-3.3-70b-versatile' },
@@ -118,6 +121,16 @@ function load() {
   }
   if (!data.azureEndpoint && process.env.AZURE_OPENAI_ENDPOINT) {
     data.azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+  }
+
+  if (data && data.models && data.models.gemini) {
+    const DEAD_RE = /^gemini-(1\.0|1\.5|2\.0|2\.5)(?:-|$)/i;
+    if (DEAD_RE.test(data.models.gemini.fast || '')) {
+      data.models.gemini.fast = 'gemini-3.8-flash';
+    }
+    if (DEAD_RE.test(data.models.gemini.smart || '')) {
+      data.models.gemini.smart = 'gemini-3.8-flash';
+    }
   }
 
   return data;

@@ -18,11 +18,13 @@ import { FloatingOverlay } from '../components/FloatingOverlay';
 import { DynamicIslandPill } from '../components/DynamicIslandPill';
 import { GlassCard } from '../components/GlassCard';
 import { AppIcon } from '../components/AppIcon';
+import { M3MicIndicator } from '../components/M3MicIndicator';
 import { Theme, isIOS } from '../theme/adaptive';
 import { MobileAudioCapture } from '../services/audio-capture';
 import { streamLLMResponse } from '../services/llm-service';
 import { transcribeAudioFile } from '../services/stt-service';
 import { saveSession } from '../services/storage';
+import { CallHelper } from '../services/call-helper';
 
 interface SessionScreenProps {
   mode: ModeId;
@@ -34,12 +36,16 @@ export const SessionScreen: React.FC<SessionScreenProps> = ({ mode: initialMode,
   const insets = useSafeAreaInsets();
   const [currentMode, setCurrentMode] = useState<ModeId>(initialMode);
   const [isListening, setIsListening] = useState(false);
+  const [audioLevel, setAudioLevel] = useState(0);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [activeAnswer, setActiveAnswer] = useState<string>('');
   const [busy, setBusy] = useState(false);
   const [sttError, setSttError] = useState<string | null>(null);
   const [userQuery, setUserQuery] = useState('');
   const [overlayVisible, setOverlayVisible] = useState(true);
+  const [speakerOn, setSpeakerOn] = useState(initialMode === 'phoneCall');
+  const [callState, setCallState] = useState<'IDLE' | 'RINGING' | 'OFFHOOK'>('IDLE');
+  const [hasOverlayPermission, setHasOverlayPermission] = useState(true);
 
   const audioCaptureRef = useRef(new MobileAudioCapture());
   const turnsRef = useRef<Turn[]>([]);
@@ -65,20 +71,65 @@ export const SessionScreen: React.FC<SessionScreenProps> = ({ mode: initialMode,
 
   useEffect(() => {
     let mounted = true;
+
+    if (Platform.OS === 'android') {
+      CallHelper.hasNotificationPermission().then((has) => {
+        if (!has) CallHelper.requestNotificationPermission();
+      });
+      CallHelper.canDrawOverlays().then((can) => {
+        if (mounted) setHasOverlayPermission(can);
+      });
+      CallHelper.getCallState().then((s) => {
+        if (mounted && (s === 'RINGING' || s === 'OFFHOOK')) setCallState(s);
+      });
+    }
+
+    const callSub = CallHelper.addCallStateListener((payload) => {
+      if (!mounted) return;
+      if (payload.state === 'RINGING' || payload.state === 'OFFHOOK' || payload.state === 'IDLE') {
+        setCallState(payload.state);
+        if (payload.state === 'OFFHOOK') {
+          CallHelper.setSpeakerphone(true);
+          setSpeakerOn(true);
+        }
+      }
+    });
+
+    const overlayActionSub = CallHelper.addOverlayActionListener((payload) => {
+      if (!mounted) return;
+      if (payload.mode) {
+        handleTriggerMode(payload.mode);
+      }
+    });
+
     const init = async () => {
       try {
-        const ok = await audioCaptureRef.current.startSegmented({
-          onSegment: (uri) => {
-            if (mounted) transcribeSegment(uri);
+        if (Platform.OS === 'android' && initialMode === 'phoneCall') {
+          await CallHelper.setSpeakerphone(true);
+        }
+        const ok = await audioCaptureRef.current.startSegmented(
+          {
+            onSegment: (uri) => {
+              if (mounted) transcribeSegment(uri);
+            },
+            onAudioLevel: (lvl) => {
+              if (mounted) setAudioLevel(lvl);
+            },
+            onError: (err) => {
+              if (mounted) setSttError(err.message);
+            },
           },
-          onError: (err) => {
-            if (mounted) setSttError(err.message);
-          },
-        });
+          {
+            mode: initialMode,
+            enableSpeaker: initialMode === 'phoneCall',
+            showOverlay: settings.floatingOverlayEnabled !== false,
+          }
+        );
         if (mounted) setIsListening(ok);
       } catch (err: any) {
         if (mounted) {
           setIsListening(false);
+          setAudioLevel(0);
           setSttError(err.message || 'Audio error');
         }
       }
@@ -87,19 +138,43 @@ export const SessionScreen: React.FC<SessionScreenProps> = ({ mode: initialMode,
 
     return () => {
       mounted = false;
+      callSub.remove();
+      overlayActionSub.remove();
       audioCaptureRef.current.stop().catch(() => {});
     };
   }, []);
 
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      CallHelper.updateFloatingOverlay(activeAnswer, isListening, currentMode);
+    }
+  }, [activeAnswer, isListening, currentMode]);
+
+  const toggleSpeakerphone = async () => {
+    const next = !speakerOn;
+    setSpeakerOn(next);
+    await CallHelper.setSpeakerphone(next);
+  };
+
   const startListening = async () => {
     try {
-      const ok = await audioCaptureRef.current.startSegmented({
-        onSegment: transcribeSegment,
-        onError: (err) => Alert.alert('Audio Error', err.message),
-      });
+      setSttError(null);
+      const ok = await audioCaptureRef.current.startSegmented(
+        {
+          onSegment: (uri) => transcribeSegment(uri),
+          onAudioLevel: (lvl) => setAudioLevel(lvl),
+          onError: (err) => setSttError(err.message),
+        },
+        {
+          mode: currentMode,
+          enableSpeaker: speakerOn,
+          showOverlay: settings.floatingOverlayEnabled !== false,
+        }
+      );
       setIsListening(ok);
     } catch (err: any) {
       setIsListening(false);
+      setAudioLevel(0);
       setSttError(err.message || 'Audio error');
     }
   };
@@ -109,9 +184,11 @@ export const SessionScreen: React.FC<SessionScreenProps> = ({ mode: initialMode,
       try {
         const trailingUri = await audioCaptureRef.current.stop();
         setIsListening(false);
+        setAudioLevel(0);
         if (trailingUri) await transcribeSegment(trailingUri);
       } catch {
         setIsListening(false);
+        setAudioLevel(0);
       }
     } else {
       setSttError(null);
@@ -178,15 +255,6 @@ export const SessionScreen: React.FC<SessionScreenProps> = ({ mode: initialMode,
         onTriggerMode={(m) => handleTriggerMode(m)}
       />
 
-      {/* Android Floating Picture-in-Picture Overlay */}
-      <FloatingOverlay
-        visible={overlayVisible && !isIOS && !!settings.floatingOverlayEnabled}
-        activeAnswer={activeAnswer}
-        isListening={isListening}
-        onTriggerMode={(m) => handleTriggerMode(m)}
-        onClose={() => setOverlayVisible(false)}
-      />
-
       {/* Top Bar with Dynamic Status Bar Safe Padding */}
       <View
         style={[
@@ -210,6 +278,38 @@ export const SessionScreen: React.FC<SessionScreenProps> = ({ mode: initialMode,
           </Text>
         </View>
         <View style={styles.topActions}>
+          {Platform.OS === 'android' && (
+            <TouchableOpacity
+              style={[
+                styles.speakerBtn,
+                {
+                  backgroundColor: speakerOn
+                    ? Theme.colors.secondaryContainer
+                    : Theme.colors.surfaceContainerHighest,
+                },
+              ]}
+              onPress={toggleSpeakerphone}
+            >
+              <AppIcon
+                name="settings"
+                size={15}
+                color={speakerOn ? Theme.colors.onSecondaryContainer : Theme.colors.onSurface}
+              />
+              <Text
+                style={[
+                  styles.btnText,
+                  {
+                    color: speakerOn
+                      ? Theme.colors.onSecondaryContainer
+                      : Theme.colors.onSurface,
+                    fontWeight: speakerOn ? '700' : '500',
+                  },
+                ]}
+              >
+                {speakerOn ? 'Speaker ON' : 'Speaker'}
+              </Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={[
               styles.listenBtn,
@@ -243,11 +343,53 @@ export const SessionScreen: React.FC<SessionScreenProps> = ({ mode: initialMode,
                 { color: Theme.colors.onErrorContainer },
               ]}
             >
-              End Session
+              End
             </Text>
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Live Phone Call Status Banner */}
+      {callState !== 'IDLE' && (
+        <View style={[styles.callBanner, { backgroundColor: Theme.colors.primaryContainer }]}>
+          <View style={[styles.liveDot, { backgroundColor: Theme.colors.live }]} />
+          <Text style={[styles.callBannerText, { color: Theme.colors.onPrimaryContainer }]}>
+            {callState === 'RINGING'
+              ? '📞 Incoming Phone Call Detected...'
+              : '📞 Active Phone Call • Speakerphone & Background Assistant Active'}
+          </Text>
+        </View>
+      )}
+
+      {/* Android Floating Overlay Permission Prompt */}
+      {Platform.OS === 'android' && !hasOverlayPermission && settings.floatingOverlayEnabled !== false && (
+        <TouchableOpacity
+          style={[styles.overlayPermBanner, { backgroundColor: Theme.colors.surfaceContainerHigh }]}
+          onPress={() => {
+            CallHelper.requestOverlayPermission();
+            setTimeout(() => CallHelper.canDrawOverlays().then(setHasOverlayPermission), 2500);
+          }}
+        >
+          <Text style={[styles.overlayPermText, { color: Theme.colors.onSurface }]}>
+            ✨ Tap to enable Floating Overlay over Phone Dialer, Meet & Zoom
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Live Real-time Microphone Indicator & Equalizer (Material 3) */}
+      <M3MicIndicator
+        isListening={isListening}
+        audioLevel={audioLevel}
+        error={sttError}
+        onToggleListening={toggleListening}
+        onRequestPermission={() => {
+          setSttError(null);
+          audioCaptureRef.current.requestPermissions().then((ok) => {
+            if (ok) startListening();
+            else setSttError('Microphone permission denied. Enable it in Settings.');
+          });
+        }}
+      />
 
       {/* AI Live Suggestion Card */}
       <View style={styles.cardContainer}>
@@ -261,7 +403,7 @@ export const SessionScreen: React.FC<SessionScreenProps> = ({ mode: initialMode,
         >
           <View style={styles.answerHeader}>
             <Text style={[styles.answerTitle, { color: Theme.colors.primary }]}>
-              Cue Live Copilot
+              Ghost Live Copilot
             </Text>
             {busy && <ActivityIndicator size="small" color={Theme.colors.primary} />}
           </View>
@@ -306,7 +448,7 @@ export const SessionScreen: React.FC<SessionScreenProps> = ({ mode: initialMode,
               color: Theme.colors.onSurface,
             },
           ]}
-          placeholder="Ask Cue anything about the conversation..."
+          placeholder="Ask Ghost anything about the conversation..."
           placeholderTextColor={Theme.colors.onSurfaceVariant}
           value={userQuery}
           onChangeText={setUserQuery}
@@ -443,5 +585,36 @@ const styles = StyleSheet.create({
   sendText: {
     ...Theme.typography.labelLarge,
     fontWeight: '700',
+  },
+  speakerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: Theme.shapes.full,
+  },
+  callBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.outlineVariant,
+  },
+  callBannerText: {
+    ...Theme.typography.labelMedium,
+    fontWeight: '700',
+    flex: 1,
+  },
+  overlayPermBanner: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.outlineVariant,
+  },
+  overlayPermText: {
+    ...Theme.typography.labelSmall,
   },
 });

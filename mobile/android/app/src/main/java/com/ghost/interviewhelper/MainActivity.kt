@@ -1,4 +1,4 @@
-package com.cue.interviewhelper
+package com.ghost.interviewhelper
 
 import android.os.Build
 import android.os.Bundle

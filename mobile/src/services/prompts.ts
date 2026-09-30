@@ -50,7 +50,14 @@ export const MODES_META: { [key in ModeId]: { title: string; subtitle: string; i
   },
 };
 
-export function buildSystemPrompt(mode: ModeId, contextBlock: string | null, aiRules?: string): string {
+export function buildSystemPrompt(
+  mode: ModeId,
+  contextBlock: string | null,
+  aiRules?: string,
+  language?: string,
+  liveTranslate?: boolean,
+  targetLanguage?: string
+): string {
   let base = '';
   switch (mode) {
     case 'say':
@@ -82,6 +89,13 @@ export function buildSystemPrompt(mode: ModeId, contextBlock: string | null, aiR
   let full = contextBlock ? contextBlock + '\n\n' + base : base;
   if (aiRules && aiRules.trim()) {
     full += '\n\nAI Style & Behavioral Rules:\n' + aiRules.trim();
+  }
+  if (language && language !== 'auto') {
+    full += `\n\nMultilingual Mode: The user's active language is "${language}". Provide suggestions and answers in this language unless requested otherwise.`;
+  }
+  if (liveTranslate) {
+    const target = targetLanguage || 'en';
+    full += `\n\nLive Translation Active: If non-${target} speech is detected in the transcript, deliver all translations and answers translated into ${target}.`;
   }
   return full;
 }

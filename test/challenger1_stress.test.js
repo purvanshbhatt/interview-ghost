@@ -360,7 +360,7 @@ test('SUITE 2: Drawer Toggle State & pointOverUI Hit-Testing Stress Tests', asyn
 test('SUITE 3: 8-Provider Smart Model Resolution & Fault Injection Matrix', async (t) => {
 
   const allProviders = [
-    { provider: 'gemini', fast: 'gemini-2.5-flash', smart: 'gemini-2.5-flash', config: { apiKeys: { gemini: 'mock-key' } } },
+    { provider: 'gemini', fast: 'gemini-3.8-flash', smart: 'gemini-3.8-flash', config: { apiKeys: { gemini: 'mock-key' } } },
     { provider: 'openai', fast: 'gpt-4o-mini', smart: 'gpt-4o', config: { apiKeys: { openai: 'mock-key' } } },
     { provider: 'anthropic', fast: 'claude-3-5-haiku-latest', smart: 'claude-3-5-sonnet-latest', config: { apiKeys: { anthropic: 'mock-key' } } },
     { provider: 'groq', fast: 'llama-3.1-8b-instant', smart: 'llama-3.3-70b-versatile', config: { apiKeys: { groq: 'mock-key' } } },
@@ -433,7 +433,7 @@ test('SUITE 3: 8-Provider Smart Model Resolution & Fault Injection Matrix', asyn
       }
 
       const overrideConfig = p.provider === 'gemini'
-        ? { models: { gemini: { fast: 'gemini-2.5-flash', smart: 'gemini-smart-custom' } } }
+        ? { models: { gemini: { fast: 'gemini-3.8-flash', smart: 'gemini-smart-custom' } } }
         : {};
 
       const llm = createLLM({
@@ -512,7 +512,7 @@ test('SUITE 3: 8-Provider Smart Model Resolution & Fault Injection Matrix', asyn
       }
 
       const overrideConfig = p.provider === 'gemini'
-        ? { models: { gemini: { fast: 'gemini-2.5-flash', smart: 'gemini-smart-custom' } } }
+        ? { models: { gemini: { fast: 'gemini-3.8-flash', smart: 'gemini-smart-custom' } } }
         : {};
 
       const llm = createLLM({

@@ -19,7 +19,7 @@ const DEFAULT_SETTINGS = {
     custom: 'mock-custom-key',
   },
   models: {
-    gemini: { fast: 'gemini-2.5-flash', smart: 'gemini-2.5-flash' },
+    gemini: { fast: 'gemini-3.8-flash', smart: 'gemini-3.8-flash' },
     openai: { fast: 'gpt-4o-mini', smart: 'gpt-4o' },
     anthropic: { fast: 'claude-3-5-haiku-latest', smart: 'claude-3-5-sonnet-latest' },
     groq: { fast: 'llama-3.1-8b-instant', smart: 'llama-3.3-70b-versatile' },
@@ -235,7 +235,7 @@ function createMockLLMProvider(config = {}) {
   } = config;
 
   const defaultModels = {
-    gemini: { fast: 'gemini-2.5-flash', smart: 'gemini-2.5-flash' },
+    gemini: { fast: 'gemini-3.8-flash', smart: 'gemini-3.8-flash' },
     openai: { fast: 'gpt-4o-mini', smart: 'gpt-4o' },
     anthropic: { fast: 'claude-3-5-haiku-latest', smart: 'claude-3-5-sonnet-latest' },
     groq: { fast: 'llama-3.1-8b-instant', smart: 'llama-3.3-70b-versatile' },

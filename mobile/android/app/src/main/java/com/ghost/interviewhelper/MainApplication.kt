@@ -1,4 +1,4 @@
-package com.cue.interviewhelper
+package com.ghost.interviewhelper
 
 import android.app.Application
 import android.content.res.Configuration
@@ -15,6 +15,7 @@ import com.facebook.soloader.SoLoader
 
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
+import expo.modules.ExpoModulesPackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -22,15 +23,15 @@ class MainApplication : Application(), ReactApplication {
         this,
         object : DefaultReactNativeHost(this) {
           override fun getPackages(): List<ReactPackage> {
-            val packages = PackageList(this).packages
-            // Packages that cannot be autolinked yet can be added manually here, for example:
-            // packages.add(new MyReactNativePackage());
+            val packages = PackageList(this).packages.toMutableList()
+            packages.add(CallHelperPackage())
+            packages.add(ExpoModulesPackage())
             return packages
           }
 
-          override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
+          override fun getJSMainModuleName(): String = "index"
 
-          override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
+          override fun getUseDeveloperSupport(): Boolean = false
 
           override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
           override val isHermesEnabled: Boolean = BuildConfig.IS_HERMES_ENABLED

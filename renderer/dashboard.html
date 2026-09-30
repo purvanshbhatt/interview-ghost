@@ -278,6 +278,10 @@
         <li class="past-empty">No sessions yet. End a session to create your first one.</li>
       </ul>
       <article id="past-session-view" class="past-session-view hidden">
+        <div class="past-session-actions" style="display:flex;gap:8px;padding:8px 0;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);">
+          <button id="copy-past-transcript-btn" class="drawer-save-btn" style="padding:6px 14px;font-size:12px;" type="button">📋 Copy Transcript</button>
+          <button id="close-past-view-btn" class="drawer-close" style="padding:6px 14px;font-size:12px;" type="button">✕ Back to List</button>
+        </div>
         <pre id="past-session-body"></pre>
       </article>
     </aside>
@@ -304,6 +308,7 @@
           <button class="s-tab" data-tab="style">✨ Style</button>
           <button class="s-tab" data-tab="qa">💬 Q&amp;A</button>
           <button class="s-tab" data-tab="android">📱 Android</button>
+          <button class="s-tab" data-tab="language">🌐 Language</button>
           <button class="s-tab" data-tab="general">⚙️ General</button>
         </div>
         <div class="s-saved" id="settings-saved">Saved</div>
@@ -504,7 +509,49 @@
           <button id="open-phonelink-btn" class="s-action">Open Windows Phone Link</button>
         </div>
 
-        <!-- TAB 8: General -->
+        <!-- TAB: Language & Live Translation -->
+        <div class="s-tab-pane hidden" data-pane="language">
+          <label class="s-label">Spoken Audio Language <span class="s-hint">Auto-detect supports 85+ languages via Gemini 3.5 Transcribe &amp; Deepgram</span></label>
+          <select id="audio-language-select" class="s-select" style="width:100%;background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:8px;font-size:13px;margin-top:6px;">
+            <option value="auto">⚡ Auto-Detect (85+ Languages)</option>
+            <option value="en">English (US, UK, Global)</option>
+            <option value="es">Spanish (Español)</option>
+            <option value="fr">French (Français)</option>
+            <option value="de">German (Deutsch)</option>
+            <option value="hi">Hindi (हिन्दी / Hinglish)</option>
+            <option value="zh">Mandarin (中文)</option>
+            <option value="ja">Japanese (日本語)</option>
+            <option value="pt">Portuguese (Português)</option>
+            <option value="ru">Russian (Русский)</option>
+            <option value="ar">Arabic (العربية)</option>
+            <option value="it">Italian (Italiano)</option>
+            <option value="ko">Korean (한국어)</option>
+            <option value="nl">Dutch (Nederlands)</option>
+            <option value="tr">Turkish (Türkçe)</option>
+          </select>
+
+          <label class="s-label" style="margin-top:16px;">Real-Time Live Translation</label>
+          <label class="settings-row settings-row-check" style="display:flex;align-items:flex-start;gap:8px;margin-top:6px;cursor:pointer;">
+            <input type="checkbox" id="live-translate-toggle" style="margin-top:2px;" />
+            <span style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.4;">Translate incoming speech into target language live as words are spoken</span>
+          </label>
+
+          <label class="s-label" style="margin-top:16px;">Target Translation Language</label>
+          <select id="target-language-select" class="s-select" style="width:100%;background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:8px;font-size:13px;margin-top:6px;">
+            <option value="en">English</option>
+            <option value="es">Spanish (Español)</option>
+            <option value="fr">French (Français)</option>
+            <option value="de">German (Deutsch)</option>
+            <option value="hi">Hindi (हिन्दी)</option>
+            <option value="zh">Mandarin (中文)</option>
+            <option value="ja">Japanese (日本語)</option>
+            <option value="pt">Portuguese (Português)</option>
+            <option value="ar">Arabic (العربية)</option>
+            <option value="ru">Russian (Русский)</option>
+          </select>
+        </div>
+
+        <!-- TAB: General -->
         <div class="s-tab-pane hidden" data-pane="general">
           <label class="s-label">Session Persistence &amp; Transcripts</label>
           <label class="settings-row settings-row-check" style="display:flex;align-items:flex-start;gap:8px;margin-top:6px;cursor:pointer;">
@@ -512,6 +559,20 @@
             <span style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.4;">Save transcripts to disk after each session (<code>meeting_*.txt</code> in <code>&lt;userData&gt;/transcripts</code>)</span>
           </label>
           <p class="settings-hint" style="margin-top:8px;">Unchecked, sessions still leave a structured meeting record in <code>meetings.json</code> for memory injection, but no transcript .txt is written. Audio is never recorded to disk in either mode.</p>
+
+          <label class="s-label" style="margin-top:20px;">Software Updates &amp; Git Sync</label>
+          <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:14px;margin-top:6px;">
+            <div style="font-size:14px;font-weight:700;color:#fff;">Ghost Copilot v1.2.0</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:2px;">Repository: purvanshbhatt/interview-ghost (branch: main)</div>
+            <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+              <button id="check-updates-btn" class="drawer-save-btn" style="padding:6px 14px;font-size:12px;" type="button">Check for Updates</button>
+              <button id="open-github-releases-btn" class="drawer-close" style="padding:6px 14px;font-size:12px;" type="button">View Releases ↗</button>
+            </div>
+            <div id="update-status-msg" style="font-size:12px;color:rgba(255,255,255,0.85);margin-top:10px;line-height:1.5;display:none;padding:8px;border-radius:6px;background:rgba(255,255,255,0.05);"></div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:10px;">
+              Local Git Update Command: <code>./scripts/update-ghost.sh</code> (Mac/Linux) or <code>scripts\update-ghost.bat</code> (Windows)
+            </div>
+          </div>
         </div>
       </div>
     </aside>

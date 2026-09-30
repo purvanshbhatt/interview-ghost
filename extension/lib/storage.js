@@ -7,8 +7,8 @@ export const DEFAULT_SETTINGS = {
   // AI Providers & Keys
   provider: 'gemini',
   geminiApiKey: '',
-  geminiModelFast: 'gemini-2.5-flash',
-  geminiModelSmart: 'gemini-2.5-pro',
+  geminiModelFast: 'gemini-3.8-flash',
+  geminiModelSmart: 'gemini-3.8-flash',
   
   openaiApiKey: '',
   openaiModelFast: 'gpt-4o-mini',

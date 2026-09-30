@@ -57,7 +57,7 @@ test.describe('Tier 3: Cross-Feature Combinations', () => {
     });
 
     assert.equal(response, 'Solution strategy');
-    assert.equal(llm.model, 'gemini-2.5-flash');
+    assert.equal(llm.model, 'gemini-3.8-flash');
     assert.equal(llm.maxTokens, 1400); // Smart tier token limit
   });
 

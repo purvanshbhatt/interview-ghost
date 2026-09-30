@@ -6,21 +6,26 @@ export async function transcribeAudioFile(
   settings: AppSettings,
   channel: 'you' | 'them' = 'you'
 ): Promise<Turn | null> {
-  const provider = settings.sttProvider || 'deepgram';
+  let provider: string = settings.sttProvider || 'deepgram';
+  // If provider is set to deepgram or gemini without deepgram key, but gemini key is present, auto-select gemini-transcribe
+  if ((provider === 'deepgram' && !settings.apiKeys?.deepgram && settings.apiKeys?.gemini) || provider === 'gemini') {
+    provider = 'gemini-transcribe';
+  }
+
   const apiKey =
     provider === 'gemini-transcribe'
       ? settings.apiKeys?.gemini
       : settings.apiKeys?.[provider as keyof typeof settings.apiKeys] ||
+        settings.apiKeys?.gemini ||
         settings.apiKeys?.deepgram ||
-        settings.apiKeys?.openai ||
-        settings.apiKeys?.gemini;
+        settings.apiKeys?.openai;
 
   if (!apiKey) {
-    throw new Error('Transcription key for ' + provider + ' is missing. Add it in Settings.');
+    throw new Error('Transcription API key is missing. Add your Gemini or Deepgram key in Settings.');
   }
 
   try {
-    if (provider === 'gemini-transcribe') {
+    if (provider === 'gemini-transcribe' || provider === 'gemini') {
       const base64Audio = await FileSystem.readAsStringAsync(fileUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
@@ -64,35 +69,49 @@ export async function transcribeAudioFile(
       }
 
       if (!text) {
-        // Fallback: Gemini multimodal generateContent
-        const fbResponse = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [
-                {
-                  role: 'user',
-                  parts: [
+        // Fallback: Try Gemini 3.8 Flash, then Gemini 3.5 Flash-Lite, then Gemini 3.5 Flash, then Gemini 3.1 Flash-Lite
+        const fallbackModels = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.1-flash-lite'];
+        const targetLang = settings.targetLanguage || 'en';
+        const translationInstruction = settings.liveTranslate
+          ? ` If the speech is not in ${targetLang}, translate it into ${targetLang} and output: [Original speech] (Translated: [${targetLang} translation]).`
+          : '';
+        const transcribePrompt = `Transcribe this audio verbatim in whatever language is spoken (support 85+ languages with automatic detection).${translationInstruction} Return only the spoken text with punctuation. If no clear speech, return empty.`;
+
+        for (const fbModel of fallbackModels) {
+          try {
+            const fbResponse = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${fbModel}:generateContent?key=${apiKey}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [
                     {
-                      text: 'Transcribe this audio verbatim. Return only the exact spoken words with punctuation. If there is no clear speech, return empty.',
-                    },
-                    {
-                      inlineData: {
-                        mimeType: 'audio/m4a',
-                        data: base64Audio,
-                      },
+                      role: 'user',
+                      parts: [
+                        {
+                          text: transcribePrompt,
+                        },
+                        {
+                          inlineData: {
+                            mimeType: 'audio/m4a',
+                            data: base64Audio,
+                          },
+                        },
+                      ],
                     },
                   ],
-                },
-              ],
-            }),
+                }),
+              }
+            );
+            if (fbResponse.ok) {
+              const fbJson = await fbResponse.json();
+              text = fbJson.candidates?.[0]?.content?.parts?.[0]?.text || '';
+              if (text.trim()) break;
+            }
+          } catch {
+            // continue to next fallback
           }
-        );
-        if (fbResponse.ok) {
-          const fbJson = await fbResponse.json();
-          text = fbJson.candidates?.[0]?.content?.parts?.[0]?.text || '';
         }
       }
 
@@ -105,53 +124,14 @@ export async function transcribeAudioFile(
         text: trimmed,
         ts: Date.now(),
       };
-    } else if (provider === 'gemini') {
-      const base64Audio = await FileSystem.readAsStringAsync(fileUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [
-              {
-                role: 'user',
-                parts: [
-                  {
-                    text: 'Transcribe this audio verbatim. Return only the exact spoken words with punctuation. If there is no clear speech, return empty.',
-                  },
-                  {
-                    inlineData: {
-                      mimeType: 'audio/m4a',
-                      data: base64Audio,
-                    },
-                  },
-                ],
-              },
-            ],
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Gemini Audio transcription failed: HTTP ' + response.status);
-      }
-
-      const json = await response.json();
-      const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-      if (!text) return null;
-
-      return {
-        id: Math.random().toString(36).substring(2, 9),
-        channel,
-        text,
-        ts: Date.now(),
-      };
     } else if (provider === 'deepgram') {
-      const response = await FileSystem.uploadAsync('https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true', fileUri, {
+      const langParam =
+        settings.language && settings.language !== 'auto'
+          ? `&language=${encodeURIComponent(settings.language)}`
+          : '&detect_language=true';
+      const deepgramUrl = `https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true${langParam}`;
+
+      const response = await FileSystem.uploadAsync(deepgramUrl, fileUri, {
         headers: {
           Authorization: 'Token ' + apiKey,
           'Content-Type': 'audio/m4a',
@@ -165,8 +145,12 @@ export async function transcribeAudioFile(
       }
 
       const json = JSON.parse(response.body);
-      const text = json.results?.channels?.[0]?.alternatives?.[0]?.transcript?.trim();
+      let text = json.results?.channels?.[0]?.alternatives?.[0]?.transcript?.trim();
       if (!text) return null;
+
+      if (settings.liveTranslate && settings.targetLanguage && settings.targetLanguage !== 'en') {
+        text += ` [${json.results?.channels?.[0]?.detected_language || 'auto'}]`;
+      }
 
       return {
         id: Math.random().toString(36).substring(2, 9),

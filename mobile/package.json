@@ -1,7 +1,7 @@
 {
-  "name": "cue-mobile",
+  "name": "ghost-mobile",
   "version": "1.0.0",
-  "description": "Cue Interview & Call Copilot for Android & iOS",
+  "description": "Ghost Interview & Call Copilot for Android & iOS",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",

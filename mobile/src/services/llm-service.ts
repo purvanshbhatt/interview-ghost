@@ -65,6 +65,75 @@ async function consumeSSEStream(
   return full;
 }
 
+/**
+ * Parses an SSE text string (common in React Native where fetch() returns text rather than a ReadableStream).
+ */
+function parseSSEText(
+  rawText: string,
+  extractDelta: (json: any) => string,
+  onToken: (token: string) => void
+): string {
+  let full = '';
+  const lines = rawText.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('data:')) continue;
+    const dataContent = trimmed.slice(5).trim();
+    if (dataContent === '[DONE]') break;
+    try {
+      const json = JSON.parse(dataContent);
+      const delta = extractDelta(json);
+      if (delta) {
+        full += delta;
+        onToken(delta);
+      }
+    } catch {
+      // Ignore malformed fragments
+    }
+  }
+  return full;
+}
+
+/**
+ * Universal stream processor: reads from ReadableStream if available, or decodes SSE text / JSON payload.
+ */
+async function processStreamOrTextResponse(
+  response: Response,
+  extractDelta: (json: any) => string,
+  onToken: (token: string) => void,
+  extractFullJsonFallback?: (json: any) => string
+): Promise<string> {
+  const contentType = response.headers.get('content-type') || '';
+  if (
+    response.body &&
+    typeof (response.body as any).getReader === 'function' &&
+    contentType.includes('event-stream')
+  ) {
+    return consumeSSEStream(
+      response.body as unknown as ReadableStream<Uint8Array>,
+      extractDelta,
+      onToken
+    );
+  }
+
+  const rawText = await response.text();
+  if (rawText.includes('data:')) {
+    const sseResult = parseSSEText(rawText, extractDelta, onToken);
+    if (sseResult) return sseResult;
+  }
+
+  try {
+    const json = JSON.parse(rawText);
+    const directText = extractFullJsonFallback ? extractFullJsonFallback(json) : extractDelta(json);
+    if (directText) {
+      onToken(directText);
+      return directText;
+    }
+  } catch {}
+
+  return '';
+}
+
 /** Non-streaming fallback used when the provider/stream fails mid-flight. */
 async function nonStreamingFallback(
   options: StreamLLMOptions,
@@ -90,10 +159,101 @@ async function nonStreamingFallback(
   onDone(answer);
 }
 
+export const GEMINI_FALLBACK_MODELS = [
+  'gemini-3.8-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-3.5-flash',
+  'gemini-3.1-flash-lite',
+];
+
+async function streamGeminiWithAutoFallback(
+  apiKey: string,
+  userSelectedModel: string | undefined,
+  systemPrompt: string,
+  promptContent: string,
+  onToken: (token: string) => void,
+  onDone: (full: string) => void
+): Promise<void> {
+  const deadRegex = /^gemini-(1\.0|1\.5|2\.0|2\.5)(?:-|$)/i;
+  let candidateModels: string[];
+
+  if (!userSelectedModel || userSelectedModel === 'auto' || deadRegex.test(userSelectedModel)) {
+    candidateModels = [...GEMINI_FALLBACK_MODELS];
+  } else {
+    // Put user choice first, followed by others as fallback in case of 429/traffic
+    candidateModels = [
+      userSelectedModel,
+      ...GEMINI_FALLBACK_MODELS.filter((m) => m !== userSelectedModel),
+    ];
+  }
+
+  let lastError: Error | null = null;
+
+  for (let i = 0; i < candidateModels.length; i++) {
+    const model = candidateModels[i];
+    try {
+      const base =
+        'https://generativelanguage.googleapis.com/v1beta/models/' +
+        model +
+        ':streamGenerateContent?alt=sse&key=' +
+        apiKey;
+
+      const response = await nativeFetch(base, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            { role: 'user', parts: [{ text: systemPrompt + '\n\n---\n\n' + promptContent }] },
+          ],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 600 },
+        }),
+      });
+
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        const errMsg = errJson.error?.message || `HTTP ${response.status}`;
+        // If it's a rate limit (429), server overloaded (503), quota exceeded, or not found (404), try next model
+        if (response.status === 429 || response.status === 503 || response.status === 404 || response.status === 400) {
+          console.warn(`[Gemini AutoSelector] Model ${model} returned ${response.status} (${errMsg}). Failing over to next candidate...`);
+          lastError = new Error(`Model ${model}: ${errMsg}`);
+          continue;
+        }
+        throw new Error(errMsg);
+      }
+
+      const full = await processStreamOrTextResponse(
+        response,
+        (json) => json.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '',
+        onToken,
+        (json) => json.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || ''
+      );
+
+      if (full) {
+        onDone(full);
+        return;
+      }
+    } catch (err: any) {
+      console.warn(`[Gemini AutoSelector] Failed with ${model}:`, err.message);
+      lastError = err;
+      if (i < candidateModels.length - 1) {
+        continue;
+      }
+    }
+  }
+  throw lastError || new Error('All Gemini fallback models exhausted.');
+}
+
 export async function streamLLMResponse(options: StreamLLMOptions): Promise<void> {
   const { mode, turns, userQuery, settings, onToken, onDone, onError } = options;
   const context = buildInterviewContext(settings, mode, turns);
-  const systemPrompt = buildSystemPrompt(mode, context, settings.aiRules);
+  const systemPrompt = buildSystemPrompt(
+    mode,
+    context,
+    settings.aiRules,
+    settings.language,
+    settings.liveTranslate,
+    settings.targetLanguage
+  );
   const transcriptText = formatTranscript(turns, 16);
   const latestThem = [...turns].reverse().find(t => t.channel === 'them' && t.text && t.text.trim())?.text.trim();
 
@@ -157,59 +317,23 @@ export async function streamLLMResponse(options: StreamLLMOptions): Promise<void
         );
       }
 
-      const contentType = response.headers.get('content-type') || '';
-      if (response.body && typeof (response.body as any).getReader === 'function' && contentType.includes('event-stream')) {
-        const full = await consumeSSEStream(
-          response.body as unknown as ReadableStream<Uint8Array>,
-          (json) => json.choices?.[0]?.delta?.content || '',
-          onToken
-        );
-        onDone(full);
-      } else {
-        // Some gateways ignore stream:true and return plain JSON
-        const data = await response.json();
-        const answer = data.choices?.[0]?.message?.content || '';
-        if (answer) onToken(answer);
-        onDone(answer);
-      }
+      const full = await processStreamOrTextResponse(
+        response,
+        (json) => json.choices?.[0]?.delta?.content || '',
+        onToken,
+        (json) => json.choices?.[0]?.message?.content || ''
+      );
+      onDone(full);
     } else if (provider === 'gemini') {
-      const model = settings.models?.gemini?.fast || 'gemini-1.5-flash';
-      const base =
-        'https://generativelanguage.googleapis.com/v1beta/models/' +
-        model +
-        ':streamGenerateContent?alt=sse&key=' +
-        apiKey;
-
-      const response = await nativeFetch(base, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            { role: 'user', parts: [{ text: systemPrompt + '\n\n---\n\n' + promptContent }] },
-          ],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 600 },
-        }),
-      });
-
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.error?.message || 'Gemini API error (' + response.status + ')');
-      }
-
-      const contentType = response.headers.get('content-type') || '';
-      if (response.body && typeof (response.body as any).getReader === 'function' && contentType.includes('event-stream')) {
-        const full = await consumeSSEStream(
-          response.body as unknown as ReadableStream<Uint8Array>,
-          (json) => json.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '',
-          onToken
-        );
-        onDone(full);
-      } else {
-        const data = await response.json();
-        const answer = data.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '';
-        if (answer) onToken(answer);
-        onDone(answer);
-      }
+      const userModel = settings.models?.gemini?.fast;
+      await streamGeminiWithAutoFallback(
+        apiKey!,
+        userModel,
+        systemPrompt,
+        promptContent,
+        onToken,
+        onDone
+      );
     } else if (provider === 'anthropic') {
       const model = settings.models?.anthropic?.fast || 'claude-3-5-haiku-latest';
       const endpoint = 'https://api.anthropic.com/v1/messages';
@@ -236,23 +360,16 @@ export async function streamLLMResponse(options: StreamLLMOptions): Promise<void
         throw new Error(errJson.error?.message || 'Anthropic API error (' + response.status + ')');
       }
 
-      const contentType = response.headers.get('content-type') || '';
-      if (response.body && typeof (response.body as any).getReader === 'function' && contentType.includes('event-stream')) {
-        const full = await consumeSSEStream(
-          response.body as unknown as ReadableStream<Uint8Array>,
-          (json) =>
-            json.type === 'content_block_delta' && json.delta?.type === 'text_delta'
-              ? json.delta.text
-              : '',
-          onToken
-        );
-        onDone(full);
-      } else {
-        const data = await response.json();
-        const answer = data.content?.[0]?.text || '';
-        if (answer) onToken(answer);
-        onDone(answer);
-      }
+      const full = await processStreamOrTextResponse(
+        response,
+        (json) =>
+          json.type === 'content_block_delta' && json.delta?.type === 'text_delta'
+            ? json.delta.text
+            : '',
+        onToken,
+        (json) => json.content?.[0]?.text || ''
+      );
+      onDone(full);
     } else {
       // Providers without streaming support wired yet — graceful message.
       onError(new Error('Provider "' + provider + '" is not supported on mobile yet.'));

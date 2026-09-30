@@ -375,11 +375,11 @@ test.describe('Tier 1: Feature Coverage (>=5 tests per feature across 18 feature
   test.describe('Feature 9: 8-Provider Smart Model Resolution', () => {
     test('F9.1: Gemini resolves fast and smart models with appropriate token limits', () => {
       const fast = createMockLLMProvider({ provider: 'gemini', smart: false });
-      assert.equal(fast.model, 'gemini-2.5-flash');
+      assert.equal(fast.model, 'gemini-3.8-flash');
       assert.equal(fast.maxTokens, 700);
 
       const smart = createMockLLMProvider({ provider: 'gemini', smart: true });
-      assert.equal(smart.model, 'gemini-2.5-flash');
+      assert.equal(smart.model, 'gemini-3.8-flash');
       assert.equal(smart.maxTokens, 1400);
     });
 

@@ -25,7 +25,7 @@ export const FloatingOverlay: React.FC<FloatingOverlayProps> = ({
     <View style={styles.floatingContainer}>
       <View style={styles.header}>
         <View style={[styles.statusDot, isListening ? styles.dotActive : styles.dotIdle]} />
-        <Text style={styles.title}>Cue Call Copilot</Text>
+        <Text style={styles.title}>Ghost Call Copilot</Text>
         <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
           <AppIcon name="close" size={16} color={M3Colors.onSurfaceVariant} />
         </TouchableOpacity>

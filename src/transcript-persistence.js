@@ -102,7 +102,7 @@ function renderFullTranscriptFile(meeting, transcript) {
     'Duration:    ' + formatDuration(meeting.startedAt, meeting.endedAt),
     'Channels:    ' + (meeting.channels || 'you,them'),
     'MeetingId:   ' + (meeting.id || '(no id)'),
-    'Source:      cue end-of-session export',
+    'Source:      ghost end-of-session export',
   ].join('\n');
 
   return header + '\n\n'

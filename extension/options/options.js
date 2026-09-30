@@ -82,6 +82,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (items.sttEngine) sttEngine.value = items.sttEngine;
       if (items.sttLanguage) sttLanguage.value = items.sttLanguage;
+      const liveTranslateEl = document.getElementById('liveTranslate');
+      if (typeof items.liveTranslate === 'boolean' && liveTranslateEl) {
+        liveTranslateEl.checked = items.liveTranslate;
+      }
       if (typeof items.autoSuggestOnSpeechEnd === 'boolean') {
         autoSuggest.checked = items.autoSuggestOnSpeechEnd;
       }
@@ -124,6 +128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       sttEngine: sttEngine.value,
       sttLanguage: sttLanguage.value,
+      liveTranslate: document.getElementById('liveTranslate')?.checked || false,
       autoSuggestOnSpeechEnd: autoSuggest.checked,
 
       candidateResume: candidateResume.value,

@@ -124,6 +124,11 @@ android {
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
     }
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "ghost-interview-copilot-${variant.name}.apk"
+        }
+    }
 }
 
 // Apply static values from `gradle.properties` to the `android.packagingOptions`

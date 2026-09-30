@@ -100,7 +100,7 @@ function formatProviderErrorMessage(error, provider, model) {
 
   if (isNotFoundError(error)) {
     const modelHint = model ? ` "${model}"` : '';
-    return `${label} model${modelHint} is unavailable (404) — it may have been renamed, retired by the provider, or misspelled. Open Settings and pick a current model for ${label} (or clear the field to use cue's default), then try again.`;
+    return `${label} model${modelHint} is unavailable (404) — it may have been renamed, retired by the provider, or misspelled. Open Settings and pick a current model for ${label} (or clear the field to use Ghost's default), then try again.`;
   }
 
   return rawMessage || 'Unknown LLM error.';

@@ -278,11 +278,20 @@
         <li class="past-empty">No sessions yet. End a session to create your first one.</li>
       </ul>
       <article id="past-session-view" class="past-session-view hidden">
-        <div class="past-session-actions" style="display:flex;gap:8px;padding:8px 0;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);">
+        <div class="past-session-actions" style="display:flex;gap:8px;padding:8px 0;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);flex-wrap:wrap;">
           <button id="copy-past-transcript-btn" class="drawer-save-btn" style="padding:6px 14px;font-size:12px;" type="button">📋 Copy Transcript</button>
+          <button id="copy-past-summary-btn" class="drawer-save-btn" style="padding:6px 14px;font-size:12px;background:rgba(34,197,94,0.2);border-color:#22c55e;" type="button">💡 Copy Summary</button>
+          <button id="rerun-summary-btn" class="drawer-save-btn" style="padding:6px 14px;font-size:12px;background:rgba(99,102,241,0.25);border-color:#818cf8;" type="button">✨ Re-run AI Summary</button>
           <button id="close-past-view-btn" class="drawer-close" style="padding:6px 14px;font-size:12px;" type="button">✕ Back to List</button>
         </div>
-        <pre id="past-session-body"></pre>
+        <div id="past-summary-card" style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:8px;padding:12px;margin-bottom:12px;display:none;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+            <span style="font-size:14px;">💡</span>
+            <strong style="color:#c7d2fe;font-size:13px;">Executive AI Summary</strong>
+          </div>
+          <div id="past-summary-text" style="font-size:12px;line-height:1.6;color:rgba(255,255,255,0.9);white-space:pre-wrap;"></div>
+        </div>
+        <pre id="past-session-body" style="white-space:pre-wrap;font-family:monospace;font-size:12px;line-height:1.5;"></pre>
       </article>
     </aside>
 

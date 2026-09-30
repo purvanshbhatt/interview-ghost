@@ -184,6 +184,7 @@
           <div class="form-group">
             <label for="sttEngine">Speech-to-Text Engine</label>
             <select id="sttEngine" class="form-select">
+              <option value="gemini">Google Gemini 3.5 Transcribe &amp; Live Translate (Recommended)</option>
               <option value="webspeech">Web Speech API (Zero-Config, Free, Built-in)</option>
               <option value="groq">Groq Whisper (Requires Groq API Key, High Precision)</option>
               <option value="openai">OpenAI Whisper (Requires OpenAI API Key)</option>
@@ -193,6 +194,7 @@
           <div class="form-group">
             <label for="sttLanguage">Recognition Language</label>
             <select id="sttLanguage" class="form-select">
+              <option value="auto">⚡ Auto-Detect (85+ Languages)</option>
               <option value="en-US">English (United States)</option>
               <option value="en-GB">English (United Kingdom)</option>
               <option value="es-ES">Spanish (Spain)</option>
@@ -202,6 +204,11 @@
               <option value="ja-JP">Japanese</option>
               <option value="hi-IN">Hindi</option>
             </select>
+          </div>
+
+          <div class="form-group checkbox-group">
+            <input type="checkbox" id="liveTranslate" />
+            <label for="liveTranslate">Real-Time Live Translation into Target Language</label>
           </div>
 
           <div class="form-group checkbox-group">

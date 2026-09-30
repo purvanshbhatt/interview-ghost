@@ -612,12 +612,28 @@
     for (const s of res.sessions) {
       const li = document.createElement('li');
       const date = new Date(s.startedAt);
+      let currentSession = null;
       li.innerHTML = '<span>📄 ' + textEscape(s.fileName) + '</span><span>' + date.toLocaleString() + '</span>';
       li.addEventListener('click', async () => {
         const resp = await cue.transcriptsRead(s.path);
-        if (resp && resp.ok) {
+        if (resp && resp.ok && resp.content) {
+          currentSession = {
+            path: s.path,
+            raw: resp.content.raw || '',
+            transcript: resp.content.transcriptBlock || resp.content.raw || '',
+            summary: resp.content.summaryBlock ? resp.content.summaryBlock.replace(/^[-\s]*SUMMARY\s*/i, '').trim() : ''
+          };
           viewPane.classList.remove('hidden');
-          body.textContent = resp.raw || '';
+          body.textContent = currentSession.transcript || currentSession.raw;
+
+          const summaryCard = $('#past-summary-card');
+          const summaryText = $('#past-summary-text');
+          if (currentSession.summary) {
+            if (summaryCard) summaryCard.style.display = 'block';
+            if (summaryText) summaryText.textContent = currentSession.summary;
+          } else {
+            if (summaryCard) summaryCard.style.display = 'none';
+          }
         } else {
           showToast(resp && resp.error ? resp.error : 'Could not read this session.', 2000);
         }
@@ -636,6 +652,54 @@
         } catch {
           showToast('Could not copy to clipboard', 1500);
         }
+      }
+    });
+  }
+
+  const copyPastSummaryBtn = $('#copy-past-summary-btn');
+  if (copyPastSummaryBtn) {
+    copyPastSummaryBtn.addEventListener('click', async () => {
+      const summaryText = $('#past-summary-text');
+      const textToCopy = (summaryText && summaryText.textContent) || '';
+      if (textToCopy.trim()) {
+        try {
+          await navigator.clipboard.writeText(textToCopy.trim());
+          showToast('✓ AI Summary copied to clipboard!', 1500);
+        } catch {
+          showToast('Could not copy to clipboard', 1500);
+        }
+      } else {
+        showToast('No summary generated yet. Click "Re-run AI Summary".', 2000);
+      }
+    });
+  }
+
+  const rerunSummaryBtn = $('#rerun-summary-btn');
+  if (rerunSummaryBtn) {
+    rerunSummaryBtn.addEventListener('click', async () => {
+      const transcriptText = body ? body.textContent : '';
+      if (!transcriptText || !transcriptText.trim()) {
+        showToast('No transcript content available.', 1500);
+        return;
+      }
+      rerunSummaryBtn.disabled = true;
+      rerunSummaryBtn.textContent = '⏳ Summarizing…';
+      try {
+        const resp = await cue.transcriptsSummarize(null, transcriptText);
+        if (resp && resp.ok && resp.summary) {
+          const summaryCard = $('#past-summary-card');
+          const summaryText = $('#past-summary-text');
+          if (summaryCard) summaryCard.style.display = 'block';
+          if (summaryText) summaryText.textContent = resp.summary;
+          showToast('✓ AI Summary updated!', 1500);
+        } else {
+          showToast(resp && resp.error ? resp.error : 'Could not generate summary.', 2000);
+        }
+      } catch (err) {
+        showToast('Summary error: ' + err.message, 2000);
+      } finally {
+        rerunSummaryBtn.disabled = false;
+        rerunSummaryBtn.textContent = '✨ Re-run AI Summary';
       }
     });
   }

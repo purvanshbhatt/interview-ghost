@@ -1019,6 +1019,47 @@ ipcMain.handle('transcripts:delete', async (_e, { path: filePath }) => {
   return { ok };
 });
 
+ipcMain.handle('transcripts:summarize', async (_e, { path: filePath, text }) => {
+  try {
+    const s = store.get();
+    const llm = createLLM(s);
+    let transcriptText = text;
+    if (!transcriptText && filePath) {
+      if (!transcriptPersistence) transcriptPersistence = createTranscriptPersistence(app.getPath('userData'));
+      const parsed = transcriptPersistence.readSessionFile(filePath);
+      transcriptText = parsed.transcriptBlock || parsed.raw;
+    }
+    if (!transcriptText || !transcriptText.trim()) {
+      return { ok: false, error: 'No transcript text available to summarize.' };
+    }
+    const prompt = 'You are Ghost, an expert interview and executive meeting analyst. Analyze the following meeting transcript and provide a crisp structured summary:\n\n' +
+      'Meeting transcript:\n' + transcriptText.slice(0, 12000) + '\n\n' +
+      'Format your output with these headings:\n' +
+      'Meeting Summary: (2-3 sentences)\n' +
+      'Key Points:\n- Point 1\n' +
+      'Decisions:\n- Decision 1\n' +
+      'Action Items:\n- Action 1\n' +
+      'Follow-Up:\n- Follow-up 1';
+    const res = await llm.chat([{ role: 'user', content: prompt }]);
+    return { ok: true, summary: res.text };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('updater:run', async () => {
+  const { exec } = require('child_process');
+  const isWin = process.platform === 'win32';
+  const script = isWin ? 'scripts\\update-ghost.bat' : 'bash scripts/update-ghost.sh';
+  return new Promise((resolve) => {
+    exec(script, { cwd: __dirname }, (err, stdout, stderr) => {
+      if (err) resolve({ ok: false, error: err.message, output: (stdout || '') + '\n' + (stderr || '') });
+      else resolve({ ok: true, output: stdout || 'Update finished successfully.' });
+    });
+  });
+});
+
+
 ipcMain.handle('dashboard:toggle', () => {
   if (dashboardWin && dashboardWin.isVisible()) hideDashboard();
   else showDashboard();

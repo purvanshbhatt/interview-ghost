@@ -133,20 +133,24 @@ class CallHelperModule(reactContext: ReactApplicationContext) :
     @ReactMethod
     fun setSpeakerphone(enable: Boolean, promise: Promise) {
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (enable) {
+            if (enable) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     val speaker = audioManager.availableCommunicationDevices.firstOrNull {
                         it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
                     }
                     if (speaker != null) {
                         audioManager.setCommunicationDevice(speaker)
                     }
-                } else {
+                }
+                @Suppress("DEPRECATION")
+                audioManager.isSpeakerphoneOn = true
+            } else {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     audioManager.clearCommunicationDevice()
                 }
+                @Suppress("DEPRECATION")
+                audioManager.isSpeakerphoneOn = false
             }
-            @Suppress("DEPRECATION")
-            audioManager.isSpeakerphoneOn = enable
             promise.resolve(true)
         } catch (e: Exception) {
             Log.e(TAG, "Error toggling speakerphone: ${e.message}", e)

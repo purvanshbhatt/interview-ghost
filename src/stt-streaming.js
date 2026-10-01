@@ -250,7 +250,8 @@ class DeepgramStreamingSTT {
         sample_rate: '16000',
         channels: '1',
         endpointing: '300',
-        punctuate: 'true'
+        punctuate: 'true',
+        diarize: 'true'
       });
 
       const url = `wss://api.deepgram.com/v1/listen?${params.toString()}`;
@@ -306,7 +307,23 @@ class DeepgramStreamingSTT {
       if (msg.speech_final) {
         const full = ((this._committed || '') + ' ' + text).trim();
         this._committed = '';
-        if (full && !looksLikeHallucination(full)) this.onTranscript(full);
+        if (full && !looksLikeHallucination(full)) {
+          let detectedSpeaker = null;
+          const words = alt.words;
+          if (Array.isArray(words) && words.length > 0) {
+            const counts = {};
+            for (const w of words) {
+              if (w && w.speaker !== undefined && w.speaker !== null) {
+                counts[w.speaker] = (counts[w.speaker] || 0) + 1;
+              }
+            }
+            let max = 0;
+            for (const [spk, c] of Object.entries(counts)) {
+              if (c > max) { max = c; detectedSpeaker = Number(spk); }
+            }
+          }
+          this.onTranscript(full, detectedSpeaker);
+        }
         this.onInterim('');
         return;
       }
@@ -564,7 +581,7 @@ function createStreamingSTT(settings, channel, callbacks) {
   if ((selectedProvider === 'auto' || selectedProvider === 'deepgram') && keys.deepgram) {
     const stt = new DeepgramStreamingSTT(keys.deepgram, {
       model: 'nova-3',
-      onTranscript: (text) => onTranscript(channel, text),
+      onTranscript: (text, speaker) => onTranscript(channel, text, speaker),
       onInterim: (text) => onInterim(channel, text),
       onError,
       onStatusChange: (status) => onStatusChange(channel, status)

@@ -52,8 +52,14 @@ function ensureDir(dir) { fs.mkdirSync(dir, { recursive: true }); }
 // Channels labelled "Them" / "You" to match the in-app labelling.
 function renderTranscriptBody(transcript) {
   return (transcript || []).map((turn) => {
-    const speaker = turn.channel === 'them' ? 'Them' : 'You';
-    return speaker + ': ' + String(turn.text || '').trim();
+    let speaker = 'You';
+    if (turn.channel === 'them' || turn.speaker === 'Them' || turn.speaker === 1 || turn.speaker === '1') {
+      speaker = 'Them';
+    } else if (turn.channel === 'you' || turn.speaker === 'You' || turn.speaker === 0 || turn.speaker === '0') {
+      speaker = 'You';
+    }
+    const cleanText = String(turn.text || '').replace(/^\[(Them|You)\]:\s*/i, '').trim();
+    return cleanText ? (speaker + ': ' + cleanText) : '';
   }).filter(Boolean).join('\n');
 }
 

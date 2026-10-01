@@ -39,12 +39,17 @@ Direct download links from the [Latest GitHub Release](https://github.com/purvan
 |---|---|---|---|
 | **🪟 Windows (10/11)** | Installer (`.exe`) | [`Ghost-win-x64.exe`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/Ghost-win-x64.exe) | Double click installer & run |
 | **🪟 Windows (10/11)** | Portable (`.exe`) | [`Ghost-win-portable-x64.exe`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/Ghost-win-portable-x64.exe) | Zero-install: run directly |
-| **🍎 macOS (Universal)** | Disk Image (`.dmg`) | [`Ghost.dmg`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/Ghost.dmg) | Open `.dmg` & drag `Ghost.app` to Applications |
-| **🍎 macOS (Apple Silicon / Intel)** | Archive (`.zip`) | [`Ghost-mac.zip`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/Ghost-mac.zip) | Extract and double-click `Ghost.app` |
+| **🍎 macOS (Apple Silicon M1/M2/M3/M4)** | Disk Image (`.dmg`) | [`Ghost-mac-arm64.dmg`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/Ghost-mac-arm64.dmg) or [`Ghost.dmg`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/Ghost.dmg) | Open `.dmg` & drag `Ghost.app` to Applications |
+| **🍎 macOS (Intel x64)** | Disk Image (`.dmg`) | [`Ghost-mac-x64.dmg`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/Ghost-mac-x64.dmg) | Open `.dmg` & drag `Ghost.app` to Applications |
+| **🍎 macOS (Universal / Zip)** | Archive (`.zip`) | [`Ghost-mac.zip`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/Ghost-mac.zip) | Extract and double-click `Ghost.app` |
 | **🐧 Linux (Debian / Ubuntu)** | Debian Package (`.deb`) | [`Ghost-linux-amd64.deb`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/Ghost-linux-amd64.deb) | `sudo dpkg -i Ghost-linux-amd64.deb` |
 | **🐧 Linux (Universal)** | AppImage (`.AppImage`) | [`Ghost-linux-x86_64.AppImage`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/Ghost-linux-x86_64.AppImage) | `chmod +x Ghost-linux-x86_64.AppImage && ./Ghost-linux-x86_64.AppImage` |
-| **🤖 Android (11+)** | Android Package (`.apk`) | [`ghost-mobile-release.apk`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/ghost-mobile-release.apk) | Install on phone or `adb install -r ghost-mobile-release.apk` |
-| **🌐 Chrome / Edge / Brave** | Manifest V3 Extension | [`extension/`](extension/) | Load unpacked in `chrome://extensions` (stays dormant until toggled with `Ctrl+Shift+G`) |
+| **🤖 Android (11+)** | Android Package (`.apk`) | [`ghost-interview-copilot-release.apk`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/ghost-interview-copilot-release.apk) or [`ghost-mobile-release.apk`](https://github.com/purvanshbhatt/interview-ghost/releases/latest/download/ghost-mobile-release.apk) | Install on phone or `adb install -r ghost-interview-copilot-release.apk` |
+| **🌐 Chrome / Edge / Brave** | Manifest V3 Extension | [`extension/`](extension/) | Load unpacked in `chrome://extensions` (toggle with `Ctrl+Shift+G`) |
+
+> **First Run Security Notes**:
+> - **Windows SmartScreen**: Click **More info** → **Run anyway**.
+> - **macOS Gatekeeper**: Open Terminal and run: `xattr -cr /Applications/Ghost.app` (or right-click `Ghost.app` → **Open**).
 
 ---
 
@@ -154,7 +159,7 @@ npm run android
 # Build standalone Release APK
 cd android
 ./gradlew assembleRelease
-# Output APK: mobile/android/app/build/outputs/apk/release/app-release.apk
+# Output APK: mobile/android/app/build/outputs/apk/release/ghost-interview-copilot-release.apk
 ```
 
 ---
@@ -185,7 +190,7 @@ Ghost supports **8 distinct LLM backends**. Bring your own API key — keys are 
 
 | Provider | Recommended Fast Model | Recommended Smart Model | Streaming | Setup Link |
 |---|---|---|---|---|
-| **Google Gemini** | `gemini-2.5-flash` | `gemini-2.5-pro` | ✅ | [Google AI Studio](https://aistudio.google.com/apikey) |
+| **Google Gemini** | `gemini-3.8-flash` | `gemini-3.8-pro` | ✅ | [Google AI Studio](https://aistudio.google.com/apikey) |
 | **OpenAI** | `gpt-4o-mini` | `gpt-4o` | ✅ | [OpenAI Platform](https://platform.openai.com/api-keys) |
 | **Anthropic Claude** | `claude-3-5-haiku-latest` | `claude-3-5-sonnet-latest` | ✅ | [Anthropic Console](https://console.anthropic.com/) |
 | **Groq** | `llama-3.1-8b-instant` | `llama-3.3-70b-versatile` | ✅ | [Groq Console](https://console.groq.com/) |

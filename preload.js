@@ -26,6 +26,7 @@ const ghostBridge = {
   setIgnoreMouse: (v) => ipcRenderer.send('mouse:ignore', v),
   clearTranscript: () => ipcRenderer.invoke('transcript:clear'),
   openPane: (url) => ipcRenderer.send('open-pane', url),
+  openExternal: (url) => ipcRenderer.send('open-pane', url),
   appLinkState: () => ipcRenderer.invoke('applink:state'),
   appLinkRevoke: (callerId) => ipcRenderer.invoke('applink:revoke', callerId),
   appLinkConsentRespond: (id, allowed) => ipcRenderer.send('applink:consent-response', { id, allowed }),
@@ -54,6 +55,10 @@ const ghostBridge = {
   transcriptsDelete: (filePath) => ipcRenderer.invoke('transcripts:delete', { path: filePath }),
   transcriptsSummarize: (filePath, text) => ipcRenderer.invoke('transcripts:summarize', { path: filePath, text }),
   updaterRun: () => ipcRenderer.invoke('updater:run'),
+  updaterCheck: () => ipcRenderer.invoke('updater:check'),
+  appRelaunch: () => ipcRenderer.invoke('app:relaunch'),
+  modePromptClear: (mode) => ipcRenderer.invoke('mode-prompt:clear', { mode }),
+  modePromptClearAll: () => ipcRenderer.invoke('mode-prompt:clear-all'),
   dashboardToggle: () => ipcRenderer.invoke('dashboard:toggle'),
   dashboardHide: () => ipcRenderer.invoke('dashboard:hide'),
   dashboardMinimize: () => ipcRenderer.invoke('dashboard:minimize'),
@@ -71,7 +76,7 @@ const ghostBridge = {
       'vad:state', 'applink:consent-request', 'hide:toggle',
       'whisper:download-progress', 'whisper:models-changed',
       'transcripts:changed', 'transcript:cleared', 'cursor:pos',
-      'settings:changed', 'dashboard:maximized-changed',
+      'settings:changed', 'dashboard:maximized-changed', 'updater:update-available',
     ];
     if (!allowed.includes(channel)) return;
     ipcRenderer.on(channel, (_e, data) => cb(data));

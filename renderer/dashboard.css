@@ -1214,4 +1214,111 @@ kbd {
   pointer-events: none;
   z-index: 100;
 }
-.toast.hidden { display: none; }
+.toast.hidden { display: none; }
+
+/* Update Banner */
+.dash-update-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: linear-gradient(90deg, rgba(0, 240, 255, 0.15), rgba(99, 102, 241, 0.18));
+  border-bottom: 1px solid rgba(0, 240, 255, 0.3);
+  color: #fff;
+  font-size: 13px;
+  animation: slideDown 220ms ease;
+  z-index: 40;
+}
+.dash-update-banner.hidden { display: none; }
+.dub-content { display: flex; align-items: center; gap: 10px; }
+.dub-icon { font-size: 16px; }
+.dub-actions { display: flex; align-items: center; gap: 10px; }
+.dub-btn {
+  background: var(--accent-cyan);
+  color: #05070d;
+  font-weight: 700;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+.dub-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+.dub-close {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+}
+.dub-close:hover { color: #fff; }
+
+/* Active Profile / Role Pill */
+.active-context-summary-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 10px;
+}
+.active-context-summary-pill .acp-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
+}
+.active-context-summary-pill .acp-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  margin-left: 6px;
+}
+.active-context-summary-pill .acp-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* Custom Prompt Warning Badge */
+.custom-prompt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.reset-all-prompts-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+.reset-all-prompts-btn:hover {
+  background: rgba(239, 68, 68, 0.22);
+  color: #fff;
+}

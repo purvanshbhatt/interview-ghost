@@ -221,7 +221,7 @@ async function streamAnthropic({ apiKey, model, system, turns, imageDataUrl, max
   return full;
 }
 
-async function streamGemini({ apiKey, model, system, turns, imageDataUrl, maxTokens, onToken }) {
+async function streamGemini({ apiKey, model, system, turns, imageDataUrl, maxTokens, smart, onToken }) {
   const { GoogleGenAI } = require('@google/genai');
   const ai = new GoogleGenAI({ apiKey });
   const contents = turns.map((t, i) => {
@@ -233,8 +233,21 @@ async function streamGemini({ apiKey, model, system, turns, imageDataUrl, maxTok
     }
     return { role: t.role === 'assistant' ? 'model' : 'user', parts };
   });
+
+  const config = {
+    systemInstruction: system,
+    maxOutputTokens: maxTokens || (smart ? 700 : 350)
+  };
+
+  // Ultra-fast streaming: in fast mode, disable thinking budget so Gemini 3.8 Flash streams in <300ms
+  if (!smart) {
+    config.thinkingConfig = { thinkingBudget: 0 };
+  } else {
+    config.thinkingConfig = { thinkingBudget: 1024 };
+  }
+
   const stream = await ai.models.generateContentStream({
-    model, contents, config: { systemInstruction: system, maxOutputTokens: maxTokens }
+    model, contents, config
   });
   let full = '';
   for await (const chunk of stream) {
@@ -395,6 +408,7 @@ function createLLM(settings) {
           ...params,
           model: activeModel,
           maxTokens: activeMaxTokens,
+          smart: isSmart && activeModel === smartModel,
           turns: sanitizeTurns(params.turns)
         };
         if (provider === 'openai') return await streamOpenAI(args);

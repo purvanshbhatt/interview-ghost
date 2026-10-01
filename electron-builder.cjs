@@ -35,7 +35,7 @@ module.exports = {
   // An allowlist, so anything new has to be added here or it simply is not in
   // the shipped app — and the only symptom is a require() that throws at
   // launch, in a build that ran fine from source.
-  files: ["main.js", "preload.js", "src/**/*", "renderer/**/*", "vendor/**/*"],
+  files: ["main.js", "preload.js", "package.json", "src/**/*", "renderer/**/*", "vendor/**/*", "scripts/**/*"],
   directories: { buildResources: "build-resources" },
   afterPack: "scripts/after-pack.js",
   mac: {
@@ -43,6 +43,7 @@ module.exports = {
       { target: "dmg", arch: ["x64", "arm64"] },
       { target: "zip", arch: ["x64", "arm64"] }
     ],
+    artifactName: "${productName}-mac-${arch}.${ext}",
     category: "public.app-category.productivity",
     // With a real cert, let electron-builder discover it and apply the hardened
     // runtime (notarization is refused without it). Without one, identity:null
@@ -87,6 +88,7 @@ module.exports = {
       { target: "AppImage", arch: ["x64", "arm64"] },
       { target: "deb", arch: ["x64", "arm64"] },
     ],
+    artifactName: "${productName}-linux-${arch}.${ext}",
     category: "Utility",
     icon: "build-resources/icons",
     maintainer: "ghost",

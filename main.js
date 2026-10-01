@@ -293,9 +293,39 @@ async function flushChannel(channel) {
       return;
     }
     if (res.text && res.text.trim() && res.text.trim().length > 1 && !/^[?!.,;:\-…]+$/.test(res.text.trim())) {
-      const turn = { channel, text: res.text.trim(), ts: Date.now() };
-      pushTranscript(turn);
-      send('transcript', turn);
+      const rawText = res.text.trim();
+      if (rawText.includes('[Them]:') || rawText.includes('[You]:')) {
+        const lines = rawText.split('\n').map((l) => l.trim()).filter(Boolean);
+        for (const l of lines) {
+          if (l.startsWith('[Them]:')) {
+            const clean = l.replace(/^\[Them\]:\s*/i, '').trim();
+            if (clean) {
+              const t = { channel: 'them', speaker: 'Them', text: clean, ts: Date.now() };
+              pushTranscript(t);
+              send('transcript', t);
+              sendToDashboard('transcript', t);
+            }
+          } else if (l.startsWith('[You]:')) {
+            const clean = l.replace(/^\[You\]:\s*/i, '').trim();
+            if (clean) {
+              const t = { channel: 'you', speaker: 'You', text: clean, ts: Date.now() };
+              pushTranscript(t);
+              send('transcript', t);
+              sendToDashboard('transcript', t);
+            }
+          } else {
+            const t = { channel, text: l, ts: Date.now() };
+            pushTranscript(t);
+            send('transcript', t);
+            sendToDashboard('transcript', t);
+          }
+        }
+      } else {
+        const turn = { channel, text: rawText, ts: Date.now() };
+        pushTranscript(turn);
+        send('transcript', turn);
+        sendToDashboard('transcript', turn);
+      }
     }
   } catch (e) {
     console.log('[stt] error', e && e.message);
@@ -340,11 +370,24 @@ function initStreamingSTT() {
   }
 
   const callbacks = {
-    onTranscript: (channel, text) => {
+    onTranscript: (channel, text, speaker) => {
       if (!text || !text.trim()) return;
-      const turn = { channel, text: text.trim(), ts: Date.now() };
+      let effectiveChannel = channel;
+      let speakerLabel = speaker !== undefined && speaker !== null ? String(speaker) : undefined;
+      // Pixel Recorder-style diarization: map speaker 1 to 'them' and speaker 0 to 'you'
+      if (speaker !== undefined && speaker !== null) {
+        if (speaker === 1 || speaker === '1' || String(speaker).toLowerCase() === 'them') {
+          effectiveChannel = 'them';
+          speakerLabel = 'Them';
+        } else if (speaker === 0 || speaker === '0' || String(speaker).toLowerCase() === 'you') {
+          effectiveChannel = 'you';
+          speakerLabel = 'You';
+        }
+      }
+      const turn = { channel: effectiveChannel, text: text.trim(), ts: Date.now(), speaker: speakerLabel };
       pushTranscript(turn);
       send('transcript', turn);
+      sendToDashboard('transcript', turn);
     },
     onInterim: (channel, text) => send('stt:interim', { channel, text }),
     onError: (err) => {
@@ -420,8 +463,10 @@ async function startLocalWhisperCapture(settings) {
     },
     onTranscript: (channel, text) => {
       const turn = {
+        channel,
         speaker: channel === 'you' ? 'You' : 'Them',
         text,
+        ts: Date.now(),
         timestamp: Date.now(),
         final: true
       };
@@ -560,16 +605,17 @@ async function runFeature(mode, customQuestion = '') {
 
   const customPrompt = (settings.customPrompts && settings.customPrompts[mode]) || null;
   let systemPrompt = '';
-  if (customPrompt && customPrompt.trim()) {
-    systemPrompt = customPrompt.trim();
-    if (interviewCtx) systemPrompt = interviewCtx + '\n\n' + systemPrompt;
-    if (modeContext) systemPrompt = modeContext + '\n\n' + systemPrompt;
-  } else if (typeof modeDef.buildSystemPrompt === 'function') {
+  if (typeof modeDef.buildSystemPrompt === 'function') {
     systemPrompt = modeDef.buildSystemPrompt(settings, interviewCtx, customPrompt, modeContext);
   } else if (typeof modeDef.buildSystem === 'function') {
     let combinedCtx = interviewCtx;
     if (modeContext) combinedCtx = combinedCtx ? combinedCtx + '\n\n' + modeContext : modeContext;
     systemPrompt = modeDef.buildSystem(combinedCtx, settings.aiRules);
+    if (customPrompt && customPrompt.trim()) {
+      systemPrompt += '\n\n--- CUSTOM USER INSTRUCTIONS FOR ' + mode.toUpperCase() + ' MODE ---\n' + customPrompt.trim();
+    }
+  } else if (customPrompt && customPrompt.trim()) {
+    systemPrompt = (interviewCtx ? interviewCtx + '\n\n' : '') + (modeContext ? modeContext + '\n\n' : '') + customPrompt.trim();
   }
 
   let turns = [];
@@ -935,6 +981,25 @@ ipcMain.handle('mode-prompt:set', (_e, { mode, prompt }) => {
   if (prompt && prompt.trim()) next[mode] = prompt.trim();
   else delete next[mode];
   store.setSettings({ customPrompts: next });
+  send('settings:changed', store.getSettings());
+  sendToDashboard('settings:changed', store.getSettings());
+  return { ok: true };
+});
+
+ipcMain.handle('mode-prompt:clear', (_e, { mode }) => {
+  const current = store.getSettings().customPrompts || {};
+  const next = { ...current };
+  delete next[mode];
+  store.setSettings({ customPrompts: next });
+  send('settings:changed', store.getSettings());
+  sendToDashboard('settings:changed', store.getSettings());
+  return { ok: true };
+});
+
+ipcMain.handle('mode-prompt:clear-all', () => {
+  store.setSettings({ customPrompts: {} });
+  send('settings:changed', store.getSettings());
+  sendToDashboard('settings:changed', store.getSettings());
   return { ok: true };
 });
 
@@ -1058,6 +1123,137 @@ ipcMain.handle('updater:run', async () => {
     });
   });
 });
+
+async function checkForUpdatesInternal() {
+  const { exec } = require('child_process');
+  const isGit = fs.existsSync(path.join(__dirname, '.git'));
+  if (isGit) {
+    return new Promise((resolve) => {
+      exec('git fetch origin main && git rev-parse HEAD && git rev-parse origin/main && git log -1 --pretty=format:"%s" origin/main', { cwd: __dirname, timeout: 15000 }, (err, stdout) => {
+        if (err) {
+          checkGithubApi().then(resolve);
+          return;
+        }
+        const lines = (stdout || '').trim().split('\n');
+        if (lines.length >= 2) {
+          const currentSha = lines[0].trim();
+          const remoteSha = lines[1].trim();
+          const commitMsg = lines.slice(2).join(' ').trim() || 'Latest improvements';
+          const updateAvailable = currentSha !== remoteSha;
+          resolve({
+            ok: true,
+            updateAvailable,
+            currentSha: currentSha.slice(0, 7),
+            remoteSha: remoteSha.slice(0, 7),
+            commitMessage: commitMsg,
+            isGit: true
+          });
+        } else {
+          checkGithubApi().then(resolve);
+        }
+      });
+    });
+  } else {
+    return await checkGithubApi();
+  }
+}
+
+function checkGithubApi() {
+  const https = require('https');
+  const currentVersion = app.getVersion ? app.getVersion() : '0.2.5';
+  return new Promise((resolve) => {
+    const req = https.get('https://api.github.com/repos/purvanshbhatt/interview-ghost/releases/latest', {
+      headers: { 'User-Agent': 'Ghost-App-Updater' },
+      timeout: 8000
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          if (res.statusCode === 200) {
+            const rel = JSON.parse(data);
+            const tag = (rel.tag_name || '').replace(/^v/, '');
+            const hasNewerRelease = tag && tag !== currentVersion;
+            resolve({
+              ok: true,
+              updateAvailable: !!hasNewerRelease,
+              currentVersion,
+              latestVersion: tag || currentVersion,
+              commitMessage: rel.name || `Ghost Release v${tag}`,
+              htmlUrl: rel.html_url || 'https://github.com/purvanshbhatt/interview-ghost/releases',
+              isGit: false
+            });
+            return;
+          }
+          checkGithubCommitsFallback(resolve, currentVersion);
+        } catch {
+          checkGithubCommitsFallback(resolve, currentVersion);
+        }
+      });
+    });
+    req.on('error', () => checkGithubCommitsFallback(resolve, currentVersion));
+    req.on('timeout', () => { req.destroy(); checkGithubCommitsFallback(resolve, currentVersion); });
+  });
+}
+
+function checkGithubCommitsFallback(resolve, currentVersion) {
+  const https = require('https');
+  const req = https.get('https://api.github.com/repos/purvanshbhatt/interview-ghost/commits/main', {
+    headers: { 'User-Agent': 'Ghost-App-Updater' },
+    timeout: 8000
+  }, (res) => {
+    let data = '';
+    res.on('data', chunk => data += chunk);
+    res.on('end', () => {
+      try {
+        const json = JSON.parse(data);
+        const remoteSha = (json.sha || '').slice(0, 7);
+        const commitMsg = json.commit?.message?.split('\n')?.[0] || 'Latest improvements';
+        resolve({
+          ok: true,
+          updateAvailable: false,
+          currentVersion,
+          remoteSha,
+          commitMessage: commitMsg,
+          htmlUrl: json.html_url || 'https://github.com/purvanshbhatt/interview-ghost',
+          isGit: false
+        });
+      } catch {
+        resolve({ ok: false, error: 'Could not parse GitHub release' });
+      }
+    });
+  });
+  req.on('error', (e) => resolve({ ok: false, error: e.message }));
+  req.on('timeout', () => { req.destroy(); resolve({ ok: false, error: 'Timeout' }); });
+}
+
+ipcMain.handle('updater:check', async () => {
+  return await checkForUpdatesInternal();
+});
+
+ipcMain.handle('app:relaunch', () => {
+  app.relaunch();
+  app.exit(0);
+});
+
+// Periodic background check for updates to notify active users
+setTimeout(() => {
+  checkForUpdatesInternal().then((res) => {
+    if (res && res.updateAvailable) {
+      send('updater:update-available', res);
+      sendToDashboard('updater:update-available', res);
+    }
+  }).catch(() => {});
+}, 6000);
+
+setInterval(() => {
+  checkForUpdatesInternal().then((res) => {
+    if (res && res.updateAvailable) {
+      send('updater:update-available', res);
+      sendToDashboard('updater:update-available', res);
+    }
+  }).catch(() => {});
+}, 30 * 60 * 1000);
 
 
 ipcMain.handle('dashboard:toggle', () => {

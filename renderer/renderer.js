@@ -1127,6 +1127,13 @@
   $('#s-close').addEventListener('click', () => { void closeSettings(); });
   scrim.addEventListener('click', (e) => { if (e.target === scrim) void closeSettings(); });
 
+  const sOpenDashBtn = document.getElementById('s-open-dashboard');
+  if (sOpenDashBtn) {
+    sOpenDashBtn.addEventListener('click', () => {
+      cue.dashboardToggle();
+    });
+  }
+
   const sSaveBtn = document.getElementById('s-save-btn');
   if (sSaveBtn) {
     sSaveBtn.addEventListener('click', async () => {
@@ -1205,24 +1212,32 @@
     $('#custom-endpoint-settings').classList.toggle('hidden', settings.provider !== 'custom');
   }
 
+  function setValIfNotActive(id, val) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (document.activeElement === el) return;
+    el.value = val || '';
+  }
+
   function fillSettings() {
     // Keys tab
     document.querySelectorAll('#provider-seg button').forEach((b) => b.classList.toggle('on', b.dataset.provider === settings.provider));
-    $('#key-openai').value = settings.apiKeys.openai || '';
-    $('#key-anthropic').value = settings.apiKeys.anthropic || '';
-    $('#key-gemini').value = settings.apiKeys.gemini || '';
-    $('#key-deepgram').value = settings.apiKeys.deepgram || '';
-    $('#key-custom').value = settings.apiKeys.custom || '';
-    $('#base-url').value = settings.baseUrl || '';
+    setValIfNotActive('key-openai', settings.apiKeys && settings.apiKeys.openai);
+    setValIfNotActive('key-anthropic', settings.apiKeys && settings.apiKeys.anthropic);
+    setValIfNotActive('key-gemini', settings.apiKeys && settings.apiKeys.gemini);
+    setValIfNotActive('key-deepgram', settings.apiKeys && settings.apiKeys.deepgram);
+    setValIfNotActive('key-custom', settings.apiKeys && settings.apiKeys.custom);
+    setValIfNotActive('base-url', settings.baseUrl);
     updateCustomProviderFields();
-    $('#key-ollama').value = settings.apiKeys.ollama || '';
-    $('#key-groq').value = settings.apiKeys.groq || '';
-    $('#key-minimax').value = settings.apiKeys.minimax || '';
+    setValIfNotActive('key-ollama', settings.apiKeys && settings.apiKeys.ollama);
+    setValIfNotActive('key-groq', settings.apiKeys && settings.apiKeys.groq);
+    setValIfNotActive('key-minimax', settings.apiKeys && settings.apiKeys.minimax);
     document.querySelectorAll('#minimax-region-seg button').forEach((b) => b.classList.toggle('on', b.dataset.region === (settings.minimaxRegion || 'global_en')));
-    $('#key-azure').value = settings.apiKeys.azure || '';
-    $('#azure-endpoint').value = settings.azureEndpoint || '';
-    const m = settings.models[settings.provider] || { fast: '', smart: '' };
-    $('#model-fast').value = m.fast; $('#model-smart').value = m.smart;
+    setValIfNotActive('key-azure', settings.apiKeys && settings.apiKeys.azure);
+    setValIfNotActive('azure-endpoint', settings.azureEndpoint);
+    const m = (settings.models && settings.models[settings.provider]) || { fast: '', smart: '' };
+    setValIfNotActive('model-fast', m.fast);
+    setValIfNotActive('model-smart', m.smart);
     fillAppLinkCallers();
     $('#s-status').textContent = statusText();
     // Transcription tab
@@ -1230,26 +1245,48 @@
       button.classList.toggle('on', button.dataset.sttProvider === (settings.sttProvider || 'auto'));
     });
     const localWhisper = settings.localWhisper || { modelId: 'base.en', language: 'auto', threads: 0 };
-    $('#whisper-language').value = localWhisper.language || 'auto';
-    $('#whisper-threads').value = Number(localWhisper.threads) || 0;
+    setValIfNotActive('whisper-language', localWhisper.language || 'auto');
+    setValIfNotActive('whisper-threads', Number(localWhisper.threads) || 0);
+    setValIfNotActive('audio-language-select', settings.language || 'auto');
+    const liveTranslateEl = $('#live-translate-toggle');
+    if (liveTranslateEl && document.activeElement !== liveTranslateEl) liveTranslateEl.checked = !!settings.liveTranslate;
+    setValIfNotActive('target-language-select', settings.targetLanguage || 'en');
+
     // Profile tab
-    $('#resume-text').value = settings.resumeText || '';
-    $('#job-description').value = settings.jobDescription || '';
+    setValIfNotActive('resume-text', settings.resumeText);
+    setValIfNotActive('job-description', settings.jobDescription);
+    const overlayTargetText = $('#overlay-active-target-text');
+    if (overlayTargetText) {
+      const jd = (settings.jobDescription || '').trim();
+      const firstLine = jd.split('\n').map((l) => l.trim()).filter(Boolean)[0] || '';
+      const comp = (settings.whyCompany || '').trim();
+      let summary = 'Active Role: ';
+      if (firstLine) {
+        summary += firstLine.slice(0, 40) + (comp ? ' @ ' + comp.slice(0, 20) : '');
+      } else if (comp) {
+        summary += 'Interview at ' + comp.slice(0, 30);
+      } else {
+        summary += 'Ready (Paste or import JD to tailor answers)';
+      }
+      overlayTargetText.textContent = summary;
+    }
     // Interview Prep tab
-    $('#star-stories').value = settings.starStories || '';
-    $('#why-company').value = settings.whyCompany || '';
-    $('#why-leaving').value = settings.whyLeaving || '';
-    $('#work-style').value = settings.workStyle || '';
+    setValIfNotActive('star-stories', settings.starStories);
+    setValIfNotActive('why-company', settings.whyCompany);
+    setValIfNotActive('why-leaving', settings.whyLeaving);
+    setValIfNotActive('work-style', settings.workStyle);
     // Style tab
-    $('#ai-rules').value = settings.aiRules || '';
+    setValIfNotActive('ai-rules', settings.aiRules);
     updateAiRulesCounter();
     syncStyleChipsToRules();
     // Q&A tab
-    $('#salary-target').value = settings.salaryTarget || '';
-    $('#questions-to-ask').value = settings.questionsToAsk || '';
+    setValIfNotActive('salary-target', settings.salaryTarget);
+    setValIfNotActive('questions-to-ask', settings.questionsToAsk);
     // General tab
     const saveTranscriptsToggle = $('#save-transcripts-toggle');
-    if (saveTranscriptsToggle) saveTranscriptsToggle.checked = settings.saveTranscripts !== false;
+    if (saveTranscriptsToggle && document.activeElement !== saveTranscriptsToggle) {
+      saveTranscriptsToggle.checked = settings.saveTranscripts !== false;
+    }
   }
 
   $('#ai-rules').addEventListener('input', () => {
@@ -1632,6 +1669,14 @@
     settings.localWhisper.language = (whisperLangEl && whisperLangEl.value) || 'auto';
     const whisperThreadsEl = document.getElementById('whisper-threads');
     settings.localWhisper.threads = Math.max(0, Math.min(64, Number.parseInt(whisperThreadsEl ? whisperThreadsEl.value : '0', 10) || 0));
+    // Language & Translation
+    const audioLangEl = document.getElementById('audio-language-select');
+    if (audioLangEl) settings.language = audioLangEl.value;
+    const liveTranslateEl = document.getElementById('live-translate-toggle');
+    if (liveTranslateEl) settings.liveTranslate = liveTranslateEl.checked;
+    const targetLangEl = document.getElementById('target-language-select');
+    if (targetLangEl) settings.targetLanguage = targetLangEl.value;
+
     // Profile
     settings.resumeText = getVal('resume-text');
     settings.jobDescription = getVal('job-description');
@@ -1663,6 +1708,57 @@
       return false;
     }
   }
+
+  let overlayAutosaveTimer = null;
+  function triggerOverlayAutosave() {
+    clearTimeout(overlayAutosaveTimer);
+    overlayAutosaveTimer = setTimeout(async () => {
+      await saveSettings().catch(() => {});
+    }, 400);
+  }
+
+  const overlayAutosaveIds = [
+    'key-openai', 'key-anthropic', 'key-gemini', 'key-deepgram', 'key-custom',
+    'base-url', 'key-ollama', 'key-groq', 'key-minimax', 'key-azure',
+    'azure-endpoint', 'model-fast', 'model-smart', 'whisper-language', 'whisper-threads',
+    'resume-text', 'job-description', 'star-stories', 'why-company', 'why-leaving',
+    'work-style', 'ai-rules', 'salary-target', 'questions-to-ask',
+    'audio-language-select', 'target-language-select'
+  ];
+  for (const id of overlayAutosaveIds) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', triggerOverlayAutosave);
+      if (el.tagName === 'SELECT') el.addEventListener('change', triggerOverlayAutosave);
+    }
+  }
+
+  const overlayLiveTranslate = document.getElementById('live-translate-toggle');
+  if (overlayLiveTranslate) {
+    overlayLiveTranslate.addEventListener('change', triggerOverlayAutosave);
+  }
+
+  const overlaySaveTranscripts = document.getElementById('save-transcripts-toggle');
+  if (overlaySaveTranscripts) {
+    overlaySaveTranscripts.addEventListener('change', triggerOverlayAutosave);
+  }
+
+  const sResetAllPromptsBtn = document.getElementById('s-reset-all-prompts-btn');
+  if (sResetAllPromptsBtn) {
+    sResetAllPromptsBtn.addEventListener('click', async () => {
+      const ok = confirm('Reset all custom prompts across all modes to Ghost defaults?');
+      if (!ok) return;
+      await cue.modePromptClearAll();
+      settings.customPrompts = {};
+      showToast('All custom mode prompts reset to defaults.', 2500);
+    });
+  }
+
+  cue.on('updater:update-available', (info) => {
+    if (info && info.updateAvailable) {
+      showStatus('🚀 Ghost update available: ' + (info.commitMessage || 'Check Dashboard') + '. Click logo to update.');
+    }
+  });
 
   // ---- example conversation (matches the reference screenshot) ------------
   function showExample() {

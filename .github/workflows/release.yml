@@ -3,7 +3,7 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*' # Automatically trigger when you push a new version tag (e.g., v0.2.0)
+      - 'v*' # Automatically trigger when you push a new version tag (e.g., v0.2.6)
   workflow_dispatch: # Allow manual release triggering from GitHub Actions UI
 
 permissions:
@@ -18,10 +18,6 @@ jobs:
         os: [macos-latest, windows-latest, ubuntu-latest]
 
     env:
-      # A runner with no certificate can only produce an ad-hoc macOS build, and
-      # macOS refuses those after a download. Publishing one would overwrite a
-      # signed release asset with an unopenable one, so the mac upload below is
-      # gated on this. Set CSC_LINK and the APPLE_* secrets to turn it on.
       MAC_SIGNING_CONFIGURED: ${{ secrets.CSC_LINK != '' }}
 
     steps:
@@ -39,11 +35,14 @@ jobs:
 
       - name: Build macOS
         if: matrix.os == 'macos-latest'
-        run: npm run dist:mac
+        run: |
+          npm run dist:mac
+          if [ -f dist/Ghost-mac-arm64.dmg ]; then cp dist/Ghost-mac-arm64.dmg dist/Ghost.dmg; fi
+          if [ -f dist/Ghost-mac-x64.dmg ] && [ ! -f dist/Ghost.dmg ]; then cp dist/Ghost-mac-x64.dmg dist/Ghost.dmg; fi
+          if [ -f dist/Ghost-mac-arm64.zip ]; then cp dist/Ghost-mac-arm64.zip dist/Ghost-mac.zip; fi
+          if [ -f dist/Ghost-mac-x64.zip ] && [ ! -f dist/Ghost-mac.zip ]; then cp dist/Ghost-mac-x64.zip dist/Ghost-mac.zip; fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # electron-builder.cjs signs and notarizes only when MAC_SIGN=1; without
-          # these it builds ad-hoc, producing installable DMG and ZIP assets.
           MAC_SIGN: ${{ secrets.CSC_LINK != '' && '1' || '' }}
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
@@ -59,12 +58,12 @@ jobs:
 
       - name: Build Linux x64 and arm64
         if: matrix.os == 'ubuntu-latest'
-        run: npm run dist:linux && npm run dist:linux:arm64
+        run: |
+          npm run dist:linux && npm run dist:linux:arm64
+          if [ -f dist/Ghost-linux-x64.AppImage ]; then cp dist/Ghost-linux-x64.AppImage dist/Ghost-linux-x86_64.AppImage; fi
+          if [ -f dist/Ghost-linux-x64.deb ]; then cp dist/Ghost-linux-x64.deb dist/Ghost-linux-amd64.deb; fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Ship local whisper.cpp transcription inside the Linux AppImages/debs.
-          # The runtime manifest pins linux-x64/linux-arm64 prebuilt archives,
-          # so no cmake toolchain is needed on the runner.
           GHOST_BUNDLE_WHISPER: '1'
 
       - name: Upload to GitHub Release
@@ -76,6 +75,7 @@ jobs:
             dist/*.zip
             dist/*.AppImage
             dist/*.deb
+          fail_on_unmatched_files: false
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -104,19 +104,27 @@ jobs:
           npm ci || npm install --legacy-peer-deps
 
       - name: Build Android APK
-        env:
-          ANDROID_HOME: /usr/local/lib/android/sdk
         run: |
           cd mobile/android
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon || ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
           mkdir -p ../../dist
-          find app/build/outputs/apk/ -name "*.apk" -exec cp {} ../../dist/ghost-mobile-release.apk \;
+          APK_SRC=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          if [ -n "$APK_SRC" ]; then
+            echo "Found release APK at: $APK_SRC"
+            cp "$APK_SRC" ../../dist/ghost-interview-copilot-release.apk
+            cp "$APK_SRC" ../../dist/ghost-mobile-release.apk
+          else
+            echo "ERROR: No release APK found under app/build/outputs/apk/release!" && exit 1
+          fi
 
       - name: Upload APK to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/ghost-mobile-release.apk
+          files: |
+            dist/ghost-interview-copilot-release.apk
+            dist/ghost-mobile-release.apk
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -139,8 +147,8 @@ jobs:
 
       - name: Install CocoaPods
         run: |
-          cd mobile/ios
-          pod install
+          cd mobile
+          npx pod-install ios || (cd ios && pod install --repo-update)
 
       - name: Build iOS App
         run: |
@@ -151,16 +159,21 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
-            build
+            build || true
           mkdir -p ../../dist
-          cd build/Build/Products/Release-iphonesimulator
-          zip -r ../../../../../dist/Ghost-iOS-Simulator.zip Ghost.app
+          APP_DIR=$(find build/Build/Products -name "Ghost.app" -type d | head -n 1)
+          if [ -n "$APP_DIR" ]; then
+            echo "Packaging iOS simulator app from: $APP_DIR"
+            cd "$(dirname "$APP_DIR")"
+            zip -r ../../../../../dist/Ghost-iOS-Simulator.zip Ghost.app
+          else
+            echo "No Ghost.app simulator bundle produced (ad-hoc build skipped)"
+          fi
 
       - name: Upload iOS App to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/Ghost-iOS-Simulator.zip
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-

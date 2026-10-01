@@ -5,16 +5,58 @@
 
 const { appendAiRules } = require('./profile-context');
 
+const QUESTION_PATTERNS = [
+  /\?(\s*)$/,
+  /\b(can|could|would|will|do|did|are|is|have|has|should|what|how|why|where|when|who|which)\b.*\?/i,
+  /^(can|could|would|will|do|did|are|is|have|has|should|what|how|why|where|when|who|which)\b/i,
+  /\b(tell me about|walk me through|describe|explain|give me an example|what is your|what are your|how do you|how would you|what's your|why did you|why would you)\b/i,
+  /\b(salary expectation|compensation expectation|years of experience|familiar with|worked with)\b/i
+];
+
+function isQuestionLike(text) {
+  if (!text || typeof text !== 'string') return false;
+  const trimmed = text.trim();
+  if (trimmed.length < 5) return false;
+  if (trimmed.includes('?')) return true;
+  return QUESTION_PATTERNS.some((re) => re.test(trimmed));
+}
+
 function formatTranscript(turns, limit) {
+  if (!turns || !turns.length) return '';
   const recent = limit ? turns.slice(-limit) : turns;
-  return recent.map((t) => (t.channel === 'them' ? 'Them: ' : 'You: ') + t.text).join('\n');
+  const hasThem = recent.some((t) => t.channel === 'them' || t.speaker === 'Them' || t.speaker === '0');
+
+  if (hasThem) {
+    return recent.map((t) => {
+      const isThem = t.channel === 'them' || t.speaker === 'Them' || t.speaker === '0';
+      return (isThem ? 'Them: ' : 'You: ') + t.text;
+    }).join('\n');
+  }
+
+  // Single-channel / microphone-only fallback:
+  // Identify interviewer questions vs candidate answers to prevent self-monologue confusion
+  return recent.map((t) => {
+    const text = (t.text || '').trim();
+    const isQ = isQuestionLike(text);
+    return (isQ ? 'Them (Interviewer): ' : 'You (Candidate): ') + text;
+  }).join('\n');
 }
 
 function getLatestThemTurn(turns) {
   if (!turns || !turns.length) return null;
+  // 1. Explicit channel 'them' or speaker 'Them'
   for (let i = turns.length - 1; i >= 0; i--) {
-    if (turns[i].channel === 'them' && turns[i].text && turns[i].text.trim()) {
-      return turns[i].text.trim();
+    const t = turns[i];
+    if ((t.channel === 'them' || t.speaker === 'Them' || t.speaker === '0') && t.text && t.text.trim()) {
+      return t.text.trim();
+    }
+  }
+  // 2. Single-channel fallback: extract the latest question asked
+  for (let i = turns.length - 1; i >= 0; i--) {
+    const t = turns[i];
+    const text = (t.text || '').trim();
+    if (isQuestionLike(text)) {
+      return text;
     }
   }
   return null;
@@ -50,13 +92,13 @@ const MODES = {
         BASE_RULES +
         'Look at the screenshot and the recent conversation, decide what the user needs RIGHT NOW, and deliver it directly with no preamble.\n\n' +
         'Detect the question type and respond accordingly:\n' +
-        '• BEHAVIORAL ("tell me about a time…"): Give a complete STAR answer (Situation, Task, Action, Result) using the candidate\'s real stories when available. Be specific, include metrics, 3–4 sentences.\n' +
-        '• MOTIVATION ("why this company/role"): Give a genuine, specific answer using their stated reasons.\n' +
-        '• SITUATIONAL ("what would you do if…"): Give a structured answer showing judgment and decision-making process.\n' +
-        '• EXPERIENCE ("tell me about your role at X"): Draw from the resume to give a specific, proud answer.\n' +
-        '• TECHNICAL/CONCEPTUAL: Explain clearly with examples. For LeetCode: short approach + solution + complexity.\n' +
-        '• COMPENSATION ("salary expectations"): Use their stated target, give a confident range.\n' +
-        '• "Any questions for us?": Offer 2–3 of their prepared questions.\n\n' +
+        '• BEHAVIORAL ("tell me about a time…"): Apply the Google & Meta STAR + XYZ framework (60–90 seconds, ~120 words). Situation (1 sentence context & stakes) → Task (1 sentence personal ownership & goal) → Action (2–3 sentences with "I" statements detailing technical trade-offs, architecture choices, and overcoming roadblocks) → Result (Google XYZ format: "Accomplished [X] as measured by [Y], by doing [Z]" with concrete metrics like latency, error rate, or revenue, plus a key retrospective learning). Never generic.\n' +
+        '• MOTIVATION ("why this company/role"): Directly connect their specific engineering mission or business challenge to your real track record and technical strengths. Never generic.\n' +
+        '• SITUATIONAL ("what would you do if…"): Deliver structured architectural thinking showing trade-offs: "I would first diagnose X, evaluate trade-offs between Y and Z, and execute with rollback safety."\n' +
+        '• EXPERIENCE ("tell me about your role at X"): Draw directly from resume projects to deliver a proud, high-signal summary of what you built and its business impact.\n' +
+        '• TECHNICAL/CONCEPTUAL: Give clear, high-signal explanations with architectural trade-offs and a production example. For LeetCode: state approach + optimal solution + time/space complexity.\n' +
+        '• COMPENSATION ("salary expectations"): Use their stated target range confidently without over-explaining or apologizing.\n' +
+        '• "Any questions for us?": Offer 2–3 sharp, thoughtful questions demonstrating deep research into their engineering infrastructure and team trajectory.\n\n' +
         'Write in first person as if the candidate is speaking. No preamble, no "Here\'s what you could say". Just the answer.\n\n' +
         'CRITICAL: Always answer the MOST RECENT question asked. Never repeat answers to previous questions from earlier in the conversation.',
         contextBlock
@@ -92,13 +134,13 @@ const MODES = {
         BASE_RULES +
         '"Them" is the interviewer; "You" is the candidate.\n\n' +
         'Draft ONE natural, confident reply the candidate can say out loud, in first person.\n\n' +
-        'Rules by question type:\n' +
-        '• BEHAVIORAL: Use a real STAR story from their background. Situation (1 sentence) → Task (1 sentence) → Action (2–3 sentences, specific steps) → Result (1 sentence with metric if possible). Never generic.\n' +
-        '• MOTIVATION: Specific reasons tied to the company/role, not "I want to grow".\n' +
-        '• SITUATIONAL: Show structured thinking — "I\'d first X, then Y, because Z".\n' +
-        '• EXPERIENCE: Reference the specific role/project from their resume.\n' +
-        '• COMPENSATION: State the target range confidently without over-explaining.\n' +
-        '• TECHNICAL: Give a clear, confident explanation. Use analogies for non-technical interviewers.\n\n' +
+        'Rules by question type (grounded in Google, Meta, and Amazon interview rubrics):\n' +
+        '• BEHAVIORAL: Strict STAR format (~90 seconds, 3–4 sentences). Situation (1 sentence setting stakes) → Task (1 sentence defining ownership) → Action (2–3 sentences with "I" statements detailing specific technical execution, trade-offs, and cross-functional leadership) → Result (Google XYZ format: "Accomplished [X] as measured by [Y], by doing [Z]" with measurable metrics). Never generic.\n' +
+        '• MOTIVATION: Specific engineering and business reasons tied to their company/infrastructure, not generic praise.\n' +
+        '• SITUATIONAL: Show structured decision-making: clarify assumptions, state trade-offs, propose solution with safe rollout.\n' +
+        '• EXPERIENCE: Reference specific high-impact systems from resume.\n' +
+        '• COMPENSATION: State target range confidently without apologetic filler.\n' +
+        '• TECHNICAL: Start with intuition and trade-offs, followed by a concrete production implementation example.\n\n' +
         'No quotes, no preamble. Write the actual words to say. 2–5 sentences.\n\n' +
         'CRITICAL: Never repeat or restate the interviewer\'s question back at them. ' +
         'Do not start with "The interviewer asked..." or echo their words. ' +
@@ -309,8 +351,19 @@ const MODES = {
     },
     build(ctx) {
       const t = formatTranscript(ctx.transcript, 16);
-      return 'Phone call conversation so far:\n' + (t || '(listening not started yet)') +
-        '\n\nWhat should I say next on the phone call?';
+      const latestThem = getLatestThemTurn(ctx.transcript);
+      const customQ = ctx.userText && ctx.userText.trim();
+
+      let target = '';
+      if (customQ) {
+        target = `🎯 TARGET QUESTION / TASK:\n"${customQ}"\n\nWhat should I say next on the phone call?`;
+      } else if (latestThem) {
+        target = `🎯 LATEST PHONE CALL QUESTION TO ANSWER:\n"${latestThem}"\n\nCRITICAL: Keep it punchy (2-3 sentences), natural, and direct. Deliver the exact words to say out loud answering this latest question. What should I say next?`;
+      } else {
+        target = 'What should I say next on the phone call?';
+      }
+
+      return (t ? 'Phone call conversation so far:\n' + t + '\n\n' : '') + target;
     }
   },
 

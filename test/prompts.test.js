@@ -122,3 +122,19 @@ test('assist and say prioritize userText when custom query is provided', () => {
   assert.ok(sayBuilt.includes('🎯 TARGET QUESTION / TASK:'));
   assert.ok(sayBuilt.includes('Explain it simply without jargon.'));
 });
+
+test('single-channel turns all marked you still isolate the latest interviewer question', () => {
+  const singleChannelTurns = [
+    { channel: 'you', text: 'Thanks for having me today.' },
+    { channel: 'you', text: 'Can you tell me about a time you resolved a major production incident?' },
+    { channel: 'you', text: 'Sure, at my previous role we had an outage.' }
+  ];
+  const sayBuilt = MODES.say.build({ transcript: singleChannelTurns, userText: '' });
+  assert.ok(sayBuilt.includes('🎯 LATEST INTERVIEWER QUESTION TO ANSWER:'));
+  assert.ok(sayBuilt.includes('Can you tell me about a time you resolved a major production incident?'));
+  assert.ok(sayBuilt.includes('Them (Interviewer): Can you tell me about a time you resolved a major production incident?'));
+
+  const phoneCallBuilt = MODES.phoneCall.build({ transcript: singleChannelTurns, userText: '' });
+  assert.ok(phoneCallBuilt.includes('🎯 LATEST PHONE CALL QUESTION TO ANSWER:'));
+  assert.ok(phoneCallBuilt.includes('Can you tell me about a time you resolved a major production incident?'));
+});

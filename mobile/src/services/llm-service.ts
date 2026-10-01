@@ -1,7 +1,7 @@
 // In React Native / Expo environments, use native globalThis.fetch
 const nativeFetch: typeof fetch = typeof fetch !== 'undefined' ? fetch : (globalThis as any).fetch;
 import { AppSettings, ModeId, Turn } from '../types';
-import { buildSystemPrompt, formatTranscript } from './prompts';
+import { buildSystemPrompt, formatTranscript, getLatestThemTurn } from './prompts';
 import { buildInterviewContext } from './context-builder';
 
 export interface StreamLLMOptions {
@@ -205,7 +205,11 @@ async function streamGeminiWithAutoFallback(
           contents: [
             { role: 'user', parts: [{ text: systemPrompt + '\n\n---\n\n' + promptContent }] },
           ],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 600 },
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 350,
+            thinkingConfig: { thinkingBudget: 0 }
+          },
         }),
       });
 
@@ -255,7 +259,7 @@ export async function streamLLMResponse(options: StreamLLMOptions): Promise<void
     settings.targetLanguage
   );
   const transcriptText = formatTranscript(turns, 16);
-  const latestThem = [...turns].reverse().find(t => t.channel === 'them' && t.text && t.text.trim())?.text.trim();
+  const latestThem = getLatestThemTurn(turns);
 
   let targetPrompt = '';
   if (userQuery && userQuery.trim()) {

@@ -102,8 +102,7 @@ class CallForegroundService : Service() {
 
                 startForegroundServiceWithNotification()
 
-                // Phone call audio optimizations
-                setCommunicationMode(true)
+                // Phone call audio: enable speakerphone so both parties are heard
                 if (enableSpeaker) {
                     setSpeakerphone(true)
                 }
@@ -199,20 +198,25 @@ class CallForegroundService : Service() {
     private fun setSpeakerphone(enable: Boolean) {
         try {
             val am = audioManager ?: return
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (enable) {
+            if (enable) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     val speaker = am.availableCommunicationDevices.firstOrNull {
                         it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
                     }
                     if (speaker != null) {
-                        am.setCommunicationDevice(speaker)
+                        val success = am.setCommunicationDevice(speaker)
+                        Log.d(TAG, "setCommunicationDevice speaker success: $success")
                     }
-                } else {
+                }
+                @Suppress("DEPRECATION")
+                am.isSpeakerphoneOn = true
+            } else {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     am.clearCommunicationDevice()
                 }
+                @Suppress("DEPRECATION")
+                am.isSpeakerphoneOn = false
             }
-            @Suppress("DEPRECATION")
-            am.isSpeakerphoneOn = enable
             Log.d(TAG, "Speakerphone set to $enable")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to set speakerphone: ${e.message}")
@@ -550,7 +554,6 @@ class CallForegroundService : Service() {
 
     private fun stopCallService() {
         hideOverlayWindow()
-        setCommunicationMode(false)
         setSpeakerphone(false)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {

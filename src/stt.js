@@ -51,7 +51,7 @@ async function transcribeDeepgram(apiKey, wav) {
   return new Promise((resolve, reject) => {
     const req = https.request({
       hostname: 'api.deepgram.com',
-      path: '/v1/listen?model=nova-3&smart_format=true',
+      path: '/v1/listen?model=nova-3&smart_format=true&diarize=true',
       method: 'POST',
       headers: {
         'Authorization': 'Token ' + apiKey,
@@ -64,7 +64,17 @@ async function transcribeDeepgram(apiKey, wav) {
       res.on('end', () => {
         try {
           const parsed = JSON.parse(data);
-          const transcript = parsed?.results?.channels?.[0]?.alternatives?.[0]?.transcript || '';
+          const alt = parsed?.results?.channels?.[0]?.alternatives?.[0];
+          if (alt?.paragraphs?.paragraphs?.length > 1) {
+            const formatted = alt.paragraphs.paragraphs.map(p => {
+              const label = p.speaker === 0 ? '[You]:' : '[Them]:';
+              const sText = p.sentences ? p.sentences.map(s => s.text).join(' ') : '';
+              return `${label} ${sText}`.trim();
+            }).join('\n');
+            resolve(formatted.trim());
+            return;
+          }
+          const transcript = alt?.transcript || '';
           resolve(transcript.trim());
         } catch (e) {
           resolve('');
@@ -83,7 +93,7 @@ async function transcribeGemini(apiKey, wav) {
   const res = await ai.models.generateContent({
     model: CURRENT_GEMINI_DEFAULT,
     contents: [{ role: 'user', parts: [
-      { text: 'Transcribe this audio verbatim. Return only the spoken words with no commentary. If there is no clear speech, return an empty response.' },
+      { text: 'Transcribe this interview audio verbatim. If there are multiple speakers (such as an interviewer and candidate speaking over a phone call or meeting), separate their turns by prefixing with [Them]: for the interviewer/remote speaker, and [You]: for the candidate/local speaker. Return only the transcript with no commentary.' },
       { inlineData: { mimeType: 'audio/wav', data: wav.toString('base64') } }
     ] }]
   });

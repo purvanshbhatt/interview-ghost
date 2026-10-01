@@ -76,7 +76,9 @@
     }
   });
 
-  $('#hero-quick-launch').addEventListener('click', () => {
+  $('#hero-quick-launch').addEventListener('click', async () => {
+    collectSettings();
+    await cue.settingsSet(settings).catch(() => {});
     cue.modeStart('assist').then(onStartResult, onStartError);
   });
 
@@ -262,6 +264,7 @@
           '<div class="mode-badge-group">' +
             '<span class="mode-tag">' + meta.badge + (mode.needsScreen ? ' · SCREEN' : '') + '</span>' +
             '<span class="mode-files-pill">0 files</span>' +
+            '<span class="custom-prompt-badge" style="display:none;" title="A custom prompt instruction is active for this mode">Custom Active</span>' +
           '</div>' +
         '</div>' +
         '<h3 class="mode-title">' + meta.title + '</h3>' +
@@ -299,7 +302,11 @@
   }
 
   function wireModeCard(card, mode, presets) {
-    card.querySelector('.start-btn').addEventListener('click', () => cue.modeStart(mode.id).then(onStartResult, onStartError));
+    card.querySelector('.start-btn').addEventListener('click', async () => {
+      collectSettings();
+      await cue.settingsSet(settings).catch(() => {});
+      cue.modeStart(mode.id).then(onStartResult, onStartError);
+    });
     card.querySelector('.add-file-btn').addEventListener('click', () => cue.modeContextPickAndAdd(mode.id).then((r) => {
       if (r && r.canceled) return showToast('Cancelled', 1200);
       if (r && r.full) return showToast('Max files reached for ' + mode.id + '. Remove one first.', 2500);
@@ -337,9 +344,11 @@
     let loaded = false;
     let saveTimer = null;
 
+    const badgeEl = card.querySelector('.custom-prompt-badge');
     function setHasPrompt(has) {
       toggle.classList.toggle('has-prompt', !!has);
       toggle.title = has ? 'Custom prompt active — edit it' : 'Tweak this mode\'s prompt';
+      if (badgeEl) badgeEl.style.display = has ? 'inline-flex' : 'none';
     }
 
     function checkActivePreset(text) {
@@ -768,6 +777,7 @@
     $('#star-stories').value = settings.starStories || '';
     $('#why-company').value = settings.whyCompany || '';
     $('#why-leaving').value = settings.whyLeaving || '';
+    $('#work-style').value = settings.workStyle || '';
     $('#ai-rules').value = settings.aiRules || '';
     updateAiRulesCounter();
     syncStyleChipsToRules();
@@ -965,35 +975,160 @@
     });
   }
 
+  // Software Updates & GitHub Synchronization
   const checkUpdatesBtn = $('#check-updates-btn');
   const updateStatusMsg = $('#update-status-msg');
+  const updateBanner = $('#dash-update-banner');
+  const dubText = $('#dub-text');
+  const dubUpdateBtn = $('#dub-update-btn');
+  const dubDismissBtn = $('#dub-dismiss-btn');
+
+  let latestUpdateInfo = null;
+
+  function showUpdateBanner(info) {
+    if (!updateBanner || !dubText) return;
+    latestUpdateInfo = info;
+    const msg = info.commitMessage ? `🚀 Ghost Update Available: "${info.commitMessage.slice(0, 55)}"` : '🚀 A new Ghost update is available on GitHub!';
+    dubText.textContent = msg;
+    if (dubUpdateBtn) {
+      dubUpdateBtn.textContent = info.isGit ? 'Update & Restart' : 'Download Release ↗';
+    }
+    updateBanner.classList.remove('hidden');
+  }
+
+  if (dubDismissBtn) {
+    dubDismissBtn.addEventListener('click', () => {
+      if (updateBanner) updateBanner.classList.add('hidden');
+    });
+  }
+
+  if (dubUpdateBtn) {
+    dubUpdateBtn.addEventListener('click', async () => {
+      if (latestUpdateInfo && !latestUpdateInfo.isGit) {
+        cue.openExternal(latestUpdateInfo.htmlUrl || 'https://github.com/purvanshbhatt/interview-ghost/releases');
+        return;
+      }
+      dubUpdateBtn.disabled = true;
+      dubUpdateBtn.textContent = 'Updating…';
+      try {
+        const res = await cue.updaterRun();
+        if (res && res.ok) {
+          dubText.textContent = 'Update successful! Restarting Ghost...';
+          showToast('Updated successfully. Relaunching Ghost...', 2000);
+          setTimeout(() => cue.appRelaunch(), 1500);
+        } else {
+          showToast('Update failed: ' + (res?.error || 'unknown error'), 3500);
+          dubUpdateBtn.disabled = false;
+          dubUpdateBtn.textContent = 'Retry Update';
+        }
+      } catch (err) {
+        showToast('Update failed: ' + err.message, 3500);
+        dubUpdateBtn.disabled = false;
+        dubUpdateBtn.textContent = 'Retry Update';
+      }
+    });
+  }
+
+  cue.on('updater:update-available', (info) => {
+    if (info && info.updateAvailable) {
+      showUpdateBanner(info);
+    }
+  });
+
   if (checkUpdatesBtn) {
     checkUpdatesBtn.addEventListener('click', async () => {
       checkUpdatesBtn.disabled = true;
       checkUpdatesBtn.textContent = 'Checking…';
       if (updateStatusMsg) {
         updateStatusMsg.style.display = 'block';
-        updateStatusMsg.textContent = 'Contacting GitHub API…';
+        updateStatusMsg.textContent = 'Checking for repository updates…';
       }
       try {
-        const resp = await fetch('https://api.github.com/repos/purvanshbhatt/interview-ghost/commits/main', {
-          headers: { 'User-Agent': 'Ghost-Desktop' }
-        });
-        if (resp.ok) {
-          const data = await resp.json();
-          const shortSha = (data.sha || '').substring(0, 7);
-          const msg = (data.commit && data.commit.message && data.commit.message.split('\n')[0]) || '';
-          const date = new Date(data.commit?.author?.date || '').toLocaleDateString();
-          updateStatusMsg.innerHTML = '<strong>Latest GitHub Commit:</strong> <code>' + shortSha + '</code> (' + date + ')<br>"' + textEscape(msg) + '"<br><span style="color:#4ade80;">✓ Client is synchronized with repository.</span>';
+        const checkRes = await cue.updaterCheck();
+        if (checkRes && checkRes.updateAvailable) {
+          latestUpdateInfo = checkRes;
+          const remoteLabel = checkRes.remoteSha || checkRes.latestVersion || 'new';
+          const btnLabel = checkRes.isGit ? 'Pull &amp; Restart Ghost' : 'Download Latest Release ↗';
+          updateStatusMsg.innerHTML = '<strong>🚀 Update Available!</strong> (Release/Commit: <code>' + remoteLabel + '</code>)<br>"' + textEscape(checkRes.commitMessage) + '"<br><button id="do-update-now-btn" class="drawer-save-btn" style="margin-top:8px;padding:6px 14px;font-size:12px;" type="button">' + btnLabel + '</button>';
+          const doBtn = updateStatusMsg.querySelector('#do-update-now-btn');
+          if (doBtn) {
+            doBtn.addEventListener('click', async () => {
+              if (!checkRes.isGit) {
+                cue.openExternal(checkRes.htmlUrl || 'https://github.com/purvanshbhatt/interview-ghost/releases');
+                return;
+              }
+              doBtn.disabled = true;
+              doBtn.textContent = 'Updating…';
+              const r = await cue.updaterRun();
+              if (r && r.ok) {
+                updateStatusMsg.innerHTML = '<span style="color:#4ade80;">✓ Update finished! Restarting Ghost...</span>';
+                setTimeout(() => cue.appRelaunch(), 1200);
+              } else {
+                updateStatusMsg.innerHTML = '<span style="color:#f87171;">Update failed: ' + textEscape(r?.error || 'error') + '</span>';
+                doBtn.disabled = false;
+                doBtn.textContent = 'Retry Update';
+              }
+            });
+          }
+          showUpdateBanner(checkRes);
         } else {
-          updateStatusMsg.textContent = 'Connected to purvanshbhatt/interview-ghost.';
+          const current = (checkRes && (checkRes.currentVersion ? ('v' + checkRes.currentVersion) : checkRes.currentSha)) || 'latest';
+          updateStatusMsg.innerHTML = '<span style="color:#4ade80;">✓ Ghost Copilot is up to date (' + current + ').</span>';
         }
       } catch (err) {
-        updateStatusMsg.textContent = 'Could not reach GitHub API. Check internet connection.';
+        updateStatusMsg.textContent = 'Update check failed: ' + (err.message || err);
       } finally {
         checkUpdatesBtn.disabled = false;
         checkUpdatesBtn.textContent = 'Check for Updates';
       }
+    });
+  }
+
+  // Reset All Mode Prompts button
+  const resetAllPromptsBtn = $('#reset-all-prompts-btn');
+  if (resetAllPromptsBtn) {
+    resetAllPromptsBtn.addEventListener('click', async () => {
+      const ok = confirm('Clear all custom mode prompts across all modes and restore original Ghost defaults?');
+      if (!ok) return;
+      await cue.modePromptClearAll();
+      if (settings.customPrompts) settings.customPrompts = {};
+      loadModes();
+      showToast('All custom mode instructions cleared. Ghost defaults restored.', 2500);
+    });
+  }
+
+  // Active Profile Target Pill in Modes view
+  function updateActiveContextPill() {
+    const pill = $('#active-context-summary-pill');
+    const textEl = $('#active-context-text');
+    if (!pill || !textEl) return;
+    const jd = (settings.jobDescription || '').trim();
+    const resume = (settings.resumeText || '').trim();
+    const company = (settings.whyCompany || '').trim();
+
+    let summary = 'Target: ';
+    if (jd) {
+      const firstLine = jd.split('\n').map((l) => l.trim()).filter(Boolean)[0] || '';
+      summary += firstLine.slice(0, 45);
+      if (company && !firstLine.toLowerCase().includes(company.toLowerCase())) {
+        summary += ' @ ' + company.slice(0, 20);
+      }
+    } else if (company) {
+      summary += 'Interview at ' + company.slice(0, 30);
+    } else {
+      summary += 'Ready (No Job Description set)';
+    }
+
+    if (resume) summary += ' · ✓ Resume';
+    if (jd) summary += ' · ✓ JD';
+
+    textEl.textContent = summary;
+  }
+
+  const activeEditBtn = $('#active-context-edit-btn');
+  if (activeEditBtn) {
+    activeEditBtn.addEventListener('click', () => {
+      openSettingsTab('profile');
     });
   }
 
@@ -1311,6 +1446,7 @@
       settings = updated;
       fillSettings();
       updateReadinessChecklist();
+      updateActiveContextPill();
     }
   });
 
@@ -1320,6 +1456,7 @@
     updateShortcutKeycaps();
     loadModes();
     updateReadinessChecklist();
+    updateActiveContextPill();
   }
 
   boot();

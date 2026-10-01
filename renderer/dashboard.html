@@ -62,6 +62,18 @@
       </div>
     </header>
 
+    <!-- Update notification bar -->
+    <div id="dash-update-banner" class="dash-update-banner hidden">
+      <div class="dub-content">
+        <span class="dub-icon">🚀</span>
+        <span class="dub-text" id="dub-text">Update Available</span>
+      </div>
+      <div class="dub-actions">
+        <button id="dub-update-btn" class="dub-btn" type="button">Update &amp; Restart</button>
+        <button id="dub-dismiss-btn" class="dub-close" type="button" aria-label="Dismiss">&times;</button>
+      </div>
+    </div>
+
     <!-- Main Container -->
     <main class="dash-main">
       <!-- VIEW 1: Modes Grid (Personality Overhaul) -->
@@ -70,6 +82,11 @@
           <div class="hero-content">
             <h1 class="hero-title">Select Copilot Mode</h1>
             <p class="hero-sub">Ground Ghost with up to 5 context files per mode (resumes, job specs, slide decks, or problem sets). Launch into a stealth floating overlay that seamlessly watches and listens.</p>
+            <div id="active-context-summary-pill" class="active-context-summary-pill" title="Currently active interview target">
+              <span class="acp-dot"></span>
+              <span id="active-context-text">Target: Ready (No Job Description set)</span>
+              <button id="active-context-edit-btn" class="acp-btn" type="button">Edit Target</button>
+            </div>
           </div>
           <div class="hero-quick-actions">
             <button id="hero-quick-launch" class="btn-glow-primary">
@@ -568,6 +585,14 @@
             <span style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.4;">Save transcripts to disk after each session (<code>meeting_*.txt</code> in <code>&lt;userData&gt;/transcripts</code>)</span>
           </label>
           <p class="settings-hint" style="margin-top:8px;">Unchecked, sessions still leave a structured meeting record in <code>meetings.json</code> for memory injection, but no transcript .txt is written. Audio is never recorded to disk in either mode.</p>
+
+          <label class="s-label" style="margin-top:20px;">Mode Prompts &amp; Instructions</label>
+          <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:14px;margin-top:6px;">
+            <div style="font-size:13px;color:rgba(255,255,255,0.9);line-height:1.4;">Custom prompt instructions override or supplement default AI modes. If you previously saved custom prompts that are interfering with your current interview, you can clear them all here.</div>
+            <div style="margin-top:10px;">
+              <button id="reset-all-prompts-btn" class="reset-all-prompts-btn" type="button">Reset All Mode Prompts to Built-in Defaults</button>
+            </div>
+          </div>
 
           <label class="s-label" style="margin-top:20px;">Software Updates &amp; Git Sync</label>
           <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:14px;margin-top:6px;">

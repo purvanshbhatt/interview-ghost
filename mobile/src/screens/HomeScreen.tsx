@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform, StatusBar as RNStatusBar, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, StatusBar as RNStatusBar, TouchableOpacity, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { M3Card } from '../components/M3Card';
 import { M3TopAppBar } from '../components/M3TopAppBar';
@@ -17,7 +17,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onStartSession }) => {
   const insets = useSafeAreaInsets();
   const [callState, setCallState] = useState<'IDLE' | 'RINGING' | 'OFFHOOK'>('IDLE');
   const [canDrawOverlays, setCanDrawOverlays] = useState(true);
+  const [updateInfo, setUpdateInfo] = useState<string | null>(null);
   const modes: ModeId[] = ['phoneCall', 'say', 'assist', 'mock', 'coffee', 'notes'];
+
+  useEffect(() => {
+    // Check GitHub commits for mobile app updates
+    fetch('https://api.github.com/repos/purvanshbhatt/interview-ghost/commits/main', {
+      headers: { 'User-Agent': 'Ghost-Mobile' },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.sha) {
+          const msg = data.commit?.message?.split('\n')?.[0] || 'Latest improvements';
+          const shortSha = (data.sha || '').slice(0, 7);
+          setUpdateInfo(`${shortSha}: ${msg}`);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -55,6 +72,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onStartSession }) => {
           { paddingBottom: Math.max(insets.bottom, 16) + 70 },
         ]}
       >
+        {/* GitHub Update Notification Pill */}
+        {updateInfo && (
+          <TouchableOpacity
+            style={[styles.updateBanner, { backgroundColor: Theme.colors.surfaceContainerHigh }]}
+            onPress={() => Linking.openURL('https://github.com/purvanshbhatt/interview-ghost/releases')}
+          >
+            <View style={styles.updateInfo}>
+              <View style={styles.updateBadgeRow}>
+                <Text style={[styles.updateBadge, { color: Theme.colors.primary }]}>🚀 GHOST UPDATE</Text>
+              </View>
+              <Text style={[styles.updateDesc, { color: Theme.colors.onSurface }]} numberOfLines={1}>
+                {updateInfo}
+              </Text>
+            </View>
+            <Text style={[styles.updateAction, { color: Theme.colors.primary }]}>View →</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Live Phone Call Detected Alert Card (Android 17 Material 3) */}
         {callState !== 'IDLE' && (
           <M3Card
@@ -305,6 +340,38 @@ const styles = StyleSheet.create({
     borderRadius: Theme.shapes.full,
   },
   grantBtnText: {
+    ...Theme.typography.labelMedium,
+    fontWeight: '700',
+  },
+  updateBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: Theme.shapes.large,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: Theme.colors.outlineVariant,
+  },
+  updateInfo: {
+    flex: 1,
+    marginRight: 10,
+  },
+  updateBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  updateBadge: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  updateDesc: {
+    ...Theme.typography.bodySmall,
+    fontSize: 12,
+  },
+  updateAction: {
     ...Theme.typography.labelMedium,
     fontWeight: '700',
   },

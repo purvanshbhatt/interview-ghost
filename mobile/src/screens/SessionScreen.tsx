@@ -62,8 +62,15 @@ export const SessionScreen: React.FC<SessionScreenProps> = ({ mode: initialMode,
 
   const transcribeSegment = async (uri: string) => {
     try {
-      const turn = await transcribeAudioFile(uri, settingsRef.current, 'you');
-      if (turn) appendTurn(turn);
+      const result = await transcribeAudioFile(uri, settingsRef.current, 'you');
+      if (!result) return;
+      if (Array.isArray(result)) {
+        for (const t of result) {
+          if (t && t.text && t.text.trim()) appendTurn(t);
+        }
+      } else if (result.text && result.text.trim()) {
+        appendTurn(result);
+      }
     } catch (err: any) {
       setSttError(err.message);
     }

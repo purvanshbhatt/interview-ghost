@@ -41,6 +41,15 @@ test('renderTranscriptBody labels speakers and joins with newlines', () => {
   assert.equal(body, 'Them: hello\nYou: hi there\nThem: tell me about a time');
 });
 
+test('renderTranscriptBody supports speaker property and strips [Them]/[You] tags', () => {
+  const body = renderTranscriptBody([
+    { speaker: 'Them', text: '[Them]: How would you design this system?' },
+    { speaker: 'You',  text: '[You]: I would start with the data layer.' },
+    { channel: 'them', text: 'What about caching?' },
+  ]);
+  assert.equal(body, 'Them: How would you design this system?\nYou: I would start with the data layer.\nThem: What about caching?');
+});
+
 test('renderFullTranscriptFile includes header, transcript block, and summary sections', () => {
   const meeting = {
     startedAt: Date.UTC(2026, 7, 10, 9, 0),

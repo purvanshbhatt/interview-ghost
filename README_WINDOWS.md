@@ -47,8 +47,8 @@ npm start
 
 ### Windows Feature Defaults:
 - **AI Provider**: Google Gemini (with self-healing fallback to Fast tier on 404/429)
-- **Fast Model**: `gemini-2.5-flash`
-- **Smart Model**: `gemini-2.5-pro`
+- **Fast Model**: `gemini-3.8-flash`
+- **Smart Model**: `gemini-3.8-pro`
 - **Transcript Prompt Window**: Rolling active conversation history
 - **Context Profile**: Local résumé, STAR stories, target job description, and custom AI prompt rules
 - **Stealth Protection**: Active by default (`WDA_EXCLUDEFROMCAPTURE`)
@@ -97,8 +97,19 @@ npm run dist:win
 ```
 Outputs standalone setup executable to `dist/Ghost-Setup-x64.exe`.
 
+## Windows Defender SmartScreen Notice
+
+When running downloaded releases from GitHub (`Ghost-win-x64.exe` or `Ghost-win-portable-x64.exe`), Windows SmartScreen may show:
+> **"Windows protected your PC — Microsoft Defender SmartScreen prevented an unrecognized app from starting."**
+
+1. Click **More info**.
+2. Click **Run anyway**.
+
+This is standard for newly released open-source software that has not purchased an enterprise EV code signing certificate. Ghost contains zero telemetry, trackers, or hidden connections.
+
 ---
 
 ## Notes & Security
 - `.env` is ignored by Git and never committed.
-- Ghost operates 100% client-side with zero telemetry.
+- Ghost operates 100% client-side with direct LLM provider calls.
+- Transcripts and recordings are stored exclusively on your local machine in `%APPDATA%\Ghost\transcripts`.

@@ -1,11 +1,12 @@
 import { AppSettings, Turn } from '../types';
 import * as FileSystem from 'expo-file-system';
+import { isQuestionLike } from './prompts';
 
 export async function transcribeAudioFile(
   fileUri: string,
   settings: AppSettings,
   channel: 'you' | 'them' = 'you'
-): Promise<Turn | null> {
+): Promise<Turn[] | Turn | null> {
   let provider: string = settings.sttProvider || 'deepgram';
   // If provider is set to deepgram or gemini without deepgram key, but gemini key is present, auto-select gemini-transcribe
   if ((provider === 'deepgram' && !settings.apiKeys?.deepgram && settings.apiKeys?.gemini) || provider === 'gemini') {
@@ -73,9 +74,9 @@ export async function transcribeAudioFile(
         const fallbackModels = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.1-flash-lite'];
         const targetLang = settings.targetLanguage || 'en';
         const translationInstruction = settings.liveTranslate
-          ? ` If the speech is not in ${targetLang}, translate it into ${targetLang} and output: [Original speech] (Translated: [${targetLang} translation]).`
+          ? ` If speech is in a foreign language, translate to ${targetLang} and output: [Original speech] (Translated: [${targetLang} translation]).`
           : '';
-        const transcribePrompt = `Transcribe this audio verbatim in whatever language is spoken (support 85+ languages with automatic detection).${translationInstruction} Return only the spoken text with punctuation. If no clear speech, return empty.`;
+        const transcribePrompt = `Transcribe this audio verbatim in whatever language is spoken (support 85+ languages with automatic detection). If an interviewer is asking a question, prefix with [Them]: and if the candidate is speaking/replying, prefix with [You]:.${translationInstruction} If single speaker, return just the speech. If no clear speech, return empty.`;
 
         for (const fbModel of fallbackModels) {
           try {
@@ -118,9 +119,34 @@ export async function transcribeAudioFile(
       const trimmed = text.trim();
       if (!trimmed) return null;
 
+      // Check if Gemini returned speaker labels
+      if (trimmed.includes('[Them]:') || trimmed.includes('[You]:')) {
+        const lines = trimmed.split('\n').map((l) => l.trim()).filter(Boolean);
+        const multiTurns: Turn[] = [];
+        for (const l of lines) {
+          if (l.startsWith('[Them]:')) {
+            multiTurns.push({
+              id: Math.random().toString(36).substring(2, 9),
+              channel: 'them',
+              text: l.replace(/^\[Them\]:\s*/i, '').trim(),
+              ts: Date.now(),
+            });
+          } else if (l.startsWith('[You]:')) {
+            multiTurns.push({
+              id: Math.random().toString(36).substring(2, 9),
+              channel: 'you',
+              text: l.replace(/^\[You\]:\s*/i, '').trim(),
+              ts: Date.now(),
+            });
+          }
+        }
+        if (multiTurns.length > 0) return multiTurns;
+      }
+
+      const isQ = isQuestionLike(trimmed);
       return {
         id: Math.random().toString(36).substring(2, 9),
-        channel,
+        channel: isQ ? 'them' : channel,
         text: trimmed,
         ts: Date.now(),
       };
@@ -129,7 +155,8 @@ export async function transcribeAudioFile(
         settings.language && settings.language !== 'auto'
           ? `&language=${encodeURIComponent(settings.language)}`
           : '&detect_language=true';
-      const deepgramUrl = `https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true${langParam}`;
+      // Use &diarize=true to separate caller and candidate turns cleanly
+      const deepgramUrl = `https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&diarize=true${langParam}`;
 
       const response = await FileSystem.uploadAsync(deepgramUrl, fileUri, {
         headers: {
@@ -145,16 +172,60 @@ export async function transcribeAudioFile(
       }
 
       const json = JSON.parse(response.body);
-      let text = json.results?.channels?.[0]?.alternatives?.[0]?.transcript?.trim();
+      const alt = json.results?.channels?.[0]?.alternatives?.[0];
+      const paragraphs = alt?.paragraphs?.paragraphs;
+
+      if (paragraphs && Array.isArray(paragraphs) && paragraphs.length > 0) {
+        const multiTurns: Turn[] = [];
+        const distinctSpeakers = new Set(paragraphs.map((p: any) => p.speaker));
+        const hasMultipleSpeakers = distinctSpeakers.size > 1;
+        let interviewerSpeakerId: number | null = null;
+        if (hasMultipleSpeakers) {
+          for (const p of paragraphs) {
+            const pText = (p.sentences || []).map((s: any) => s.text).join(' ').trim();
+            if (isQuestionLike(pText)) {
+              interviewerSpeakerId = p.speaker;
+              break;
+            }
+          }
+        }
+
+        for (const p of paragraphs) {
+          const paraText = (p.sentences || []).map((s: any) => s.text).join(' ').trim();
+          if (!paraText) continue;
+          const isQ = isQuestionLike(paraText);
+          let ch: 'you' | 'them';
+          if (isQ) {
+            ch = 'them';
+          } else if (interviewerSpeakerId !== null) {
+            ch = p.speaker === interviewerSpeakerId ? 'them' : 'you';
+          } else if (hasMultipleSpeakers) {
+            ch = p.speaker === 1 ? 'them' : 'you';
+          } else {
+            ch = channel;
+          }
+
+          multiTurns.push({
+            id: Math.random().toString(36).substring(2, 9),
+            channel: ch,
+            text: paraText,
+            ts: Date.now(),
+          });
+        }
+        if (multiTurns.length > 0) return multiTurns;
+      }
+
+      let text = alt?.transcript?.trim();
       if (!text) return null;
 
       if (settings.liveTranslate && settings.targetLanguage && settings.targetLanguage !== 'en') {
         text += ` [${json.results?.channels?.[0]?.detected_language || 'auto'}]`;
       }
 
+      const isQ = isQuestionLike(text);
       return {
         id: Math.random().toString(36).substring(2, 9),
-        channel,
+        channel: isQ ? 'them' : channel,
         text,
         ts: Date.now(),
       };
@@ -181,9 +252,10 @@ export async function transcribeAudioFile(
       const text = json.text?.trim();
       if (!text) return null;
 
+      const isQ = isQuestionLike(text);
       return {
         id: Math.random().toString(36).substring(2, 9),
-        channel,
+        channel: isQ ? 'them' : channel,
         text,
         ts: Date.now(),
       };

@@ -140,7 +140,7 @@ test('Repository Sanitization Test Suite', async (t) => {
       'README_WINDOWS.md',
       'PROJECT.md',
       'mobile/README.md',
-      'mobile/android/local.properties',
+      'mobile/android/local.properties.example',
       'package.json',
       '.env.example',
     ];

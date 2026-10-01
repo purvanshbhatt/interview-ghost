@@ -1160,7 +1160,7 @@ async function checkForUpdatesInternal() {
 
 function checkGithubApi() {
   const https = require('https');
-  const currentVersion = app.getVersion ? app.getVersion() : '0.2.5';
+  const currentVersion = app.getVersion ? app.getVersion() : '0.2.6';
   return new Promise((resolve) => {
     const req = https.get('https://api.github.com/repos/purvanshbhatt/interview-ghost/releases/latest', {
       headers: { 'User-Agent': 'Ghost-App-Updater' },

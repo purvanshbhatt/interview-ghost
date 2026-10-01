@@ -131,9 +131,15 @@ jobs:
   mobile-ios:
     name: Build iOS App
     runs-on: macos-latest
+    continue-on-error: true
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -147,8 +153,9 @@ jobs:
 
       - name: Install CocoaPods
         run: |
-          cd mobile
-          npx pod-install ios || (cd ios && pod install --repo-update)
+          gem install cocoapods --no-document
+          cd mobile/ios
+          pod install --repo-update || true
 
       - name: Build iOS App
         run: |

@@ -44,6 +44,8 @@ ghost-data.json
 *.env
 .env*
 !.env.example
+!mobile/ios/.xcode.env
+!mobile/ios/.xcode.env.local
 
 # Test artefacts
 test-stt-connection.js
